@@ -1,0 +1,578 @@
+import { useEffect, useState, useRef } from "react";
+import { Link, useRouterState } from "@tanstack/react-router";
+import { motion, AnimatePresence, useScroll, useSpring } from "framer-motion";
+import {
+  Home,
+  BarChart3,
+  CandlestickChart,
+  Coins,
+  User,
+  Menu,
+  X,
+  Gift,
+  LogIn,
+  Send,
+  Mail,
+  ShieldCheck,
+  Headset,
+} from "lucide-react";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { fmtPrice, useMarkets } from "@/lib/market";
+import { CoinIcon, Change } from "./market";
+import { useFinePointer } from "./motion";
+import { SupportEntryButton } from "./support";
+import { supportConfig, supportMailto } from "@/lib/support";
+
+export function Logo({ className }: { className?: string }) {
+  return (
+    <Link to="/" className={cn("flex items-center gap-2", className)}>
+      <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden>
+        <defs>
+          <linearGradient id="lg" x1="0" x2="1">
+            <stop offset="0" stopColor="var(--primary)" />
+            <stop offset="1" stopColor="var(--cyan)" />
+          </linearGradient>
+        </defs>
+        <path
+          d="M5 27V5l11 13V5M16 27l11-11M20 5h7v7"
+          stroke="url(#lg)"
+          strokeWidth="3.2"
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+      <span className="text-lg font-black tracking-tight">
+        NEXORA
+        <span className="ml-1 text-xs font-bold tracking-[0.2em] text-muted-foreground">
+          EXCHANGE
+        </span>
+      </span>
+    </Link>
+  );
+}
+
+export function StatusBar() {
+  const [t, setT] = useState("");
+  useEffect(() => {
+    const f = () => setT(new Date().toUTCString().slice(17, 25));
+    f();
+    const i = setInterval(f, 1000);
+    return () => clearInterval(i);
+  }, []);
+  return (
+    <div className="hidden border-b border-border bg-surface text-[11px] text-dim md:block">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-1.5">
+        <div className="flex items-center gap-4">
+          <span className="flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+            Simulated engine operational
+          </span>
+          <span className="num">UTC {t}</span>
+        </div>
+        <span className="text-warning">Simulated data · Paper trading only</span>
+      </div>
+    </div>
+  );
+}
+
+const links = [
+  { to: "/markets", label: "Markets" },
+  { to: "/trade/$pair", label: "Spot", params: { pair: "BTC-USDT" } },
+  { to: "/futures", label: "Futures", badge: "100X" },
+  { to: "/earn", label: "Earn" },
+  { to: "/launchpad", label: "Launchpad" },
+  { to: "/news", label: "News" },
+  { to: "/fees", label: "Fees" },
+] as const;
+
+export function MainNavbar() {
+  const [scrolled, setScrolled] = useState(false);
+  const [open, setOpen] = useState(false);
+  const path = useRouterState({ select: (s) => s.location.pathname });
+  useEffect(() => {
+    const f = () => setScrolled(window.scrollY > 20);
+    f();
+    window.addEventListener("scroll", f, { passive: true });
+    return () => window.removeEventListener("scroll", f);
+  }, []);
+  useEffect(() => setOpen(false), [path]);
+  const active = (to: string) =>
+    to === "/trade/$pair" ? path.startsWith("/trade") : path.startsWith(to);
+  return (
+    <header
+      className={cn(
+        "sticky top-0 z-50 border-b transition-all duration-300",
+        scrolled
+          ? "border-border bg-background/85 backdrop-blur-xl"
+          : "border-transparent bg-background/40 backdrop-blur-sm",
+      )}
+    >
+      <div
+        className={cn(
+          "mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 transition-all duration-300 md:px-6",
+          scrolled ? "h-14" : "h-16",
+        )}
+      >
+        <Logo />
+        <nav className="hidden items-center gap-1 lg:flex">
+          {links.map((l) => (
+            <Link
+              key={l.label}
+              to={l.to}
+              params={("params" in l ? l.params : {}) as never}
+              className={cn(
+                "relative flex items-center gap-1.5 px-3 py-2 text-sm font-semibold transition-colors",
+                active(l.to) ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {l.label}
+              {"badge" in l && (
+                <span className="rounded bg-cyan px-1 text-[9px] font-black text-primary-foreground">
+                  {l.badge}
+                </span>
+              )}
+              {active(l.to) && (
+                <motion.span
+                  layoutId="nav-underline"
+                  className="absolute inset-x-3 -bottom-[1px] h-0.5 rounded-full bg-gradient-brand"
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                />
+              )}
+            </Link>
+          ))}
+        </nav>
+        <div className="hidden items-center gap-2 lg:flex">
+          <Link
+            to="/login"
+            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-semibold text-muted-foreground transition hover:border-primary/30 hover:text-foreground"
+          >
+            <LogIn size={15} />
+            Log in
+          </Link>
+          <Link
+            to="/register"
+            className="shine flex items-center gap-1.5 rounded-lg bg-gradient-brand px-4 py-2 text-sm font-bold text-primary-foreground"
+          >
+            <Gift size={15} />
+            Claim Bonus
+          </Link>
+        </div>
+        <button
+          onClick={() => setOpen((o) => !o)}
+          className="rounded-md p-2 text-muted-foreground lg:hidden"
+          aria-label="Menu"
+        >
+          {open ? <X size={20} /> : <Menu size={20} />}
+        </button>
+      </div>
+      <AnimatePresence>
+        {open && (
+          <motion.nav
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden border-t border-border bg-background lg:hidden"
+          >
+            <div className="grid gap-1 p-4">
+              {links.map((l) => (
+                <Link
+                  key={l.label}
+                  to={l.to}
+                  params={("params" in l ? l.params : {}) as never}
+                  className="rounded-md px-3 py-2.5 font-semibold text-muted-foreground hover:bg-elevated hover:text-foreground"
+                >
+                  {l.label}
+                </Link>
+              ))}
+              <Link
+                to="/security"
+                className="rounded-md px-3 py-2.5 font-semibold text-muted-foreground hover:bg-elevated"
+              >
+                Security
+              </Link>
+              <SupportEntryButton className="flex items-center gap-2 rounded-md px-3 py-2.5 text-left font-semibold text-muted-foreground hover:bg-elevated hover:text-foreground">
+                <Headset size={16} />
+                Support
+              </SupportEntryButton>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <Link
+                  to="/login"
+                  className="rounded-lg border border-border py-2.5 text-center font-semibold"
+                >
+                  Log in
+                </Link>
+                <Link
+                  to="/register"
+                  className="rounded-lg bg-gradient-brand py-2.5 text-center font-bold text-primary-foreground"
+                >
+                  Register
+                </Link>
+              </div>
+            </div>
+          </motion.nav>
+        )}
+      </AnimatePresence>
+    </header>
+  );
+}
+
+export function MarketTicker() {
+  const all = useMarkets();
+  const items = all.slice(0, 16);
+  return (
+    <div className="ticker-wrap overflow-hidden border-b border-border bg-surface/60">
+      <div className="animate-ticker flex w-max">
+        {[...items, ...items].map((a, i) => (
+          <Link
+            key={i}
+            to="/trade/$pair"
+            params={{ pair: `${a.symbol}-USDT` }}
+            className="flex shrink-0 items-center gap-2.5 px-6 py-2.5 text-sm hover:bg-elevated"
+          >
+            <CoinIcon a={a} size={18} />
+            <span className="font-bold">{a.symbol}/USDT</span>
+            <TickPrice v={a.price} />
+            <Change v={a.change24h} />
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+function TickPrice({ v }: { v: number }) {
+  const prev = useRef(v);
+  const [c, setC] = useState("");
+  useEffect(() => {
+    if (v !== prev.current) {
+      setC(v > prev.current ? "flash-up" : "flash-down");
+      prev.current = v;
+      const t = setTimeout(() => setC(""), 900);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [v]);
+  return (
+    <span key={v} className={cn("num rounded px-1 text-foreground", c)}>
+      {fmtPrice(v)}
+    </span>
+  );
+}
+
+export function ScrollProgress() {
+  const { scrollYProgress } = useScroll();
+  const x = useSpring(scrollYProgress, { stiffness: 200, damping: 30 });
+  return (
+    <motion.div
+      style={{ scaleX: x }}
+      className="fixed inset-x-0 top-0 z-[70] h-[2px] origin-left bg-gradient-brand"
+    />
+  );
+}
+
+const steps = [
+  "Initializing market engine...",
+  "Loading market data...",
+  "Preparing trading interface...",
+  "Securing session...",
+  "Interface ready.",
+];
+export function PageLoader() {
+  const [show, setShow] = useState(false);
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    if (sessionStorage.getItem("nx-intro")) return;
+    sessionStorage.setItem("nx-intro", "1");
+    setShow(true);
+    const iv = setInterval(() => setI((x) => Math.min(x + 1, steps.length - 1)), 380);
+    const t = setTimeout(() => setShow(false), 1900);
+    return () => {
+      clearInterval(iv);
+      clearTimeout(t);
+    };
+  }, []);
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.div
+          exit={{ y: "-100%", opacity: 0 }}
+          transition={{ duration: 0.6, ease: [0.76, 0, 0.24, 1] }}
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background"
+        >
+          <div className="grid-bg absolute inset-0 opacity-40 [mask-image:radial-gradient(circle,black,transparent_60%)]" />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="relative drop-shadow-[0_0_24px_color-mix(in_oklab,var(--primary)_50%,transparent)]"
+          >
+            <Logo className="pointer-events-none scale-150" />
+          </motion.div>
+          <div className="relative mt-10 text-sm font-semibold text-muted-foreground">
+            Initializing Trading Interface
+          </div>
+          <div className="relative mt-4 h-[2px] w-64 overflow-hidden rounded-full bg-elevated">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: "100%" }}
+              transition={{ duration: 1.7, ease: "easeInOut" }}
+              className="h-full bg-gradient-brand"
+            />
+          </div>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              className="num relative mt-3 text-[11px] text-dim"
+            >
+              {steps[i]}
+            </motion.div>
+          </AnimatePresence>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+export function CustomCursor() {
+  const fine = useFinePointer();
+  const dot = useRef<HTMLDivElement>(null);
+  const ring = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!fine) return;
+    let mx = -100,
+      my = -100,
+      rx = -100,
+      ry = -100,
+      raf = 0,
+      mode = "";
+    const move = (e: MouseEvent) => {
+      mx = e.clientX;
+      my = e.clientY;
+      const t = (e.target as HTMLElement).closest("[data-cursor], a, button, input, img");
+      mode = t
+        ? (t as HTMLElement).dataset["cursor"] ||
+          (t.tagName === "A"
+            ? "link"
+            : t.tagName === "BUTTON"
+              ? "button"
+              : t.tagName === "IMG"
+                ? "img"
+                : "")
+        : "";
+    };
+    const loop = () => {
+      rx += (mx - rx) * 0.18;
+      ry += (my - ry) * 0.18;
+      if (dot.current) dot.current.style.transform = `translate(${mx - 3}px, ${my - 3}px)`;
+      if (ring.current) {
+        const s = mode === "button" ? 1.7 : mode === "link" ? 0.6 : mode === "card" ? 1.3 : 1;
+        ring.current.style.transform = `translate(${rx - 16}px, ${ry - 16}px) scale(${s})`;
+        ring.current.style.boxShadow =
+          mode === "card"
+            ? "0 0 24px color-mix(in oklab, var(--primary) 40%, transparent)"
+            : "none";
+        ring.current.style.borderColor = mode
+          ? "var(--primary)"
+          : "color-mix(in oklab, var(--cyan) 50%, transparent)";
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    window.addEventListener("mousemove", move, { passive: true });
+    raf = requestAnimationFrame(loop);
+    return () => {
+      window.removeEventListener("mousemove", move);
+      cancelAnimationFrame(raf);
+    };
+  }, [fine]);
+  if (!fine) return null;
+  return (
+    <>
+      <div
+        ref={dot}
+        className="pointer-events-none fixed left-0 top-0 z-[90] h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_10px_var(--primary)]"
+      />
+      <div
+        ref={ring}
+        className="pointer-events-none fixed left-0 top-0 z-[90] h-8 w-8 rounded-full border transition-[box-shadow,border-color] duration-200"
+      />
+    </>
+  );
+}
+
+const mob = [
+  { to: "/", label: "Home", icon: Home },
+  { to: "/markets", label: "Markets", icon: BarChart3 },
+  { to: "/trade/$pair", label: "Trade", icon: CandlestickChart, params: { pair: "BTC-USDT" } },
+  { to: "/earn", label: "Earn", icon: Coins },
+  { to: "/account", label: "Account", icon: User },
+] as const;
+export function MobileNavbar() {
+  const path = useRouterState({ select: (s) => s.location.pathname });
+  const isActive = (to: string) =>
+    to === "/"
+      ? path === "/"
+      : to === "/trade/$pair"
+        ? path.startsWith("/trade") || path === "/futures"
+        : path.startsWith(to);
+  return (
+    <nav className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-5 border-t border-border bg-background/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden">
+      {mob.map((m) => {
+        const a = isActive(m.to);
+        return (
+          <Link
+            key={m.label}
+            to={m.to}
+            params={("params" in m ? m.params : {}) as never}
+            className={cn(
+              "relative flex flex-col items-center gap-1 py-2.5 text-[10px] font-semibold transition-colors",
+              a ? "text-foreground" : "text-dim",
+            )}
+          >
+            {a && (
+              <motion.span
+                layoutId="mob-ind"
+                className="absolute top-0 h-0.5 w-8 rounded-full bg-primary shadow-[0_0_12px_var(--primary)]"
+              />
+            )}
+            <m.icon
+              size={20}
+              className={a ? "text-primary drop-shadow-[0_0_6px_var(--primary)]" : ""}
+            />
+            {m.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+export function Footer() {
+  const cols = [
+    {
+      h: "Products",
+      l: [
+        ["Spot Trading", "/trade/BTC-USDT"],
+        ["Perpetual Futures", "/futures"],
+        ["Mining & Earn", "/earn"],
+        ["Launchpad", "/launchpad"],
+      ],
+    },
+    {
+      h: "Platform",
+      l: [
+        ["Markets", "/markets"],
+        ["Fees", "/fees"],
+        ["Security", "/security"],
+        ["News", "/news"],
+      ],
+    },
+    {
+      h: "Account",
+      l: [
+        ["Dashboard", "/account"],
+        ["Deposit", "/deposit"],
+        ["KYC", "/kyc"],
+        ["Affiliate", "/affiliate"],
+      ],
+    },
+  ];
+  return (
+    <footer className="relative mt-24 border-t border-border bg-surface pb-24 md:pb-0">
+      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 md:grid-cols-[1.4fr_1fr_1fr_1fr_1.4fr] md:px-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+        >
+          <Logo />
+          <p className="mt-4 max-w-xs text-sm text-muted-foreground">
+            An institutional-grade trading interface with simulated data across every workflow.
+          </p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <a
+              href={supportConfig.telegramUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-semibold text-muted-foreground transition hover:-translate-y-0.5 hover:border-primary/40 hover:text-primary"
+            >
+              <Send size={16} />
+              Telegram
+            </a>
+            <a
+              href={supportMailto()}
+              className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-semibold text-muted-foreground transition hover:-translate-y-0.5 hover:border-primary/40 hover:text-primary"
+            >
+              <Mail size={16} />
+              Email
+            </a>
+          </div>
+        </motion.div>
+        {cols.map((c, i) => (
+          <motion.div
+            key={c.h}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.08 * (i + 1) }}
+          >
+            <div className="mb-4 text-sm font-bold">{c.h}</div>
+            <ul className="space-y-2.5 text-sm text-muted-foreground">
+              {c.l.map(([n, h]) => (
+                <li key={n}>
+                  <a href={h} className="transition-colors hover:text-primary">
+                    {n}
+                  </a>
+                </li>
+              ))}
+              {c.h === "Account" && (
+                <li>
+                  <SupportEntryButton className="transition-colors hover:text-primary">
+                    Customer Support
+                  </SupportEntryButton>
+                </li>
+              )}
+            </ul>
+          </motion.div>
+        ))}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.32 }}
+        >
+          <div className="mb-4 text-sm font-bold">Newsletter</div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              toast.success("Preferences saved");
+              (e.target as HTMLFormElement).reset();
+            }}
+            className="flex gap-2"
+          >
+            <input
+              required
+              type="email"
+              placeholder="you@example.com"
+              className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary/60 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--primary)_18%,transparent)]"
+            />
+            <button className="rounded-lg bg-primary px-3 text-sm font-bold text-primary-foreground">
+              Join
+            </button>
+          </form>
+        </motion.div>
+      </div>
+      <div className="border-t border-border">
+        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 text-xs text-dim md:flex-row md:justify-between md:px-6">
+          <span>© 2026 NEXORA EXCHANGE — Not a real exchange.</span>
+          <span className="flex items-center gap-1.5">
+            <ShieldCheck size={13} />
+            No real funds, licenses, reserves or customers are represented.
+          </span>
+        </div>
+      </div>
+    </footer>
+  );
+}
