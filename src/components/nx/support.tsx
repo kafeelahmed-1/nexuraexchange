@@ -147,7 +147,7 @@ export function CustomerSupportWidget() {
                     <div className="min-w-0 flex-1">
                       <h3 className="font-bold">Telegram Support</h3>
                       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                        Preview a demo Telegram contact destination. No verified NEXORA account is
+                        Preview a  Telegram contact destination verified NEXORA account is
                         implied.
                       </p>
                     </div>
@@ -171,7 +171,7 @@ export function CustomerSupportWidget() {
                     )}
                   </button>
                   <p className="mt-2 break-all text-[10px] text-dim">
-                    Demo destination: {supportConfig.telegramUrl}
+                     destination: {supportConfig.telegramUrl}
                   </p>
                 </section>
 
@@ -183,7 +183,7 @@ export function CustomerSupportWidget() {
                     <div className="min-w-0 flex-1">
                       <h3 className="font-bold">Email Support</h3>
                       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                        Send questions, account inquiries or general feedback using this demo
+                        Send questions, account inquiries or general feedback using this 
                         contact.
                       </p>
                       <a
@@ -205,7 +205,7 @@ export function CustomerSupportWidget() {
                   </button>
                   <p className="mt-2 text-[10px] text-dim">
                     {" "}
-                    contact information, not a real operating exchange address.
+                    contact information, operating exchange address.
                   </p>
                 </section>
               </div>
@@ -240,7 +240,7 @@ export function CustomerSupportWidget() {
                 )}
               </section>
               <p className="border-t border-white/[0.07] pt-3 text-[10px] leading-relaxed text-dim">
-                Demo only. No live support team, ticketing, account recovery or transaction
+                 live support team, ticketing, account recovery or transaction
                 assistance is provided.
               </p>
             </div>

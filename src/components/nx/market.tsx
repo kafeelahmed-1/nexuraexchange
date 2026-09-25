@@ -26,7 +26,7 @@ export function Sparkline({ data, w = 110, h = 34, positive }: { data: number[];
   }, [data, w, h]);
   const col = up ? "var(--primary)" : "var(--destructive)";
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="overflow-visible transition-transform duration-300 group-hover:scale-105">
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="h-auto max-w-full overflow-visible transition-transform duration-300 group-hover:scale-105">
       <motion.path d={d} fill="none" stroke={col} strokeWidth={1.6} strokeLinejoin="round"
         initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} viewport={{ once: true }} transition={{ duration: 1.1, ease: "easeOut" }}
         style={{ transition: "d 0.6s ease" }} />

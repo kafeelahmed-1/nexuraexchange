@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { HeroSection, StatStrip, MarketScanner, Ecosystem, Verification, SecuritySection, OnboardingSteps, DeviceSection, NewsSection, FAQAccordion } from "@/components/nx/home";
+import { HeroSection, StatStrip, MarketScanner, Ecosystem, Verification, SecuritySection, OnboardingSteps, DeviceSection, NewsSection, FAQAccordion, CustomerServiceSection } from "@/components/nx/home";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -26,6 +26,7 @@ function Index() {
       <DeviceSection />
       <NewsSection />
       <FAQAccordion />
+      <CustomerServiceSection />
     </>
   );
 }

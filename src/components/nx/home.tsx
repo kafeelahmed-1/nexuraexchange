@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { motion, AnimatePresence, useScroll, useTransform, useMotionValue, useSpring } from "framer-motion";
-import { ShieldCheck, Mail, ArrowRight, TrendingUp, Zap, Layers, Rocket, Pickaxe, Lock, KeyRound, Network, Activity, Apple, Smartphone, Monitor, ChevronDown, UserPlus, Search, MousePointerClick } from "lucide-react";
+import { ShieldCheck, Mail, ArrowRight, TrendingUp, Zap, Layers, Rocket, Pickaxe, Lock, KeyRound, Network, Activity, Apple, Smartphone, Monitor, ChevronDown, UserPlus, Search, MousePointerClick, Headset } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { fmtPrice, useAsset } from "@/lib/market";
 import { AnimatedNumber, MagneticButton, Modal, Reveal, SectionHead, TiltCard, useFinePointer, SimulatedBadge } from "./motion";
 import { MarketTable, OrderBook, Sparkline, TimeframeTabs } from "./market";
 import { news } from "@/lib/content";
+import { SupportEntryButton } from "./support";
 
 const wrap = "mx-auto max-w-7xl px-4 md:px-6";
 
@@ -39,11 +40,11 @@ export function HeroSection() {
       </div>
 
       <div className={cn(wrap, "relative grid items-center gap-12 py-16 md:py-24 lg:grid-cols-[1.1fr_1fr]")}>
-        <motion.div style={{ y: yText }}>
+        <motion.div className="min-w-0" style={{ y: yText }}>
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-4 py-1.5 text-xs font-bold tracking-wider text-primary">
             <ShieldCheck size={14} /> SIMULATED PROOF-OF-RESERVES INTERFACE
           </motion.div>
-          <motion.h1 initial={{ opacity: 0, y: 30, filter: "blur(8px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} transition={{ duration: 0.8, delay: 0.1 }} className="mt-6 text-[2.6rem] font-black leading-[0.98] tracking-[-0.04em] sm:text-6xl lg:text-7xl">
+          <motion.h1 initial={{ opacity: 0, y: 30, filter: "blur(8px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} transition={{ duration: 0.8, delay: 0.1 }} className="mt-6 text-[2rem] font-black leading-[0.98] tracking-[-0.04em] sm:text-6xl lg:text-7xl">
             Institutional-Grade<br /><span className="text-primary">Crypto</span> <span className="text-cyan">Exchange.</span>
           </motion.h1>
           <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="mt-6 max-w-xl text-lg text-muted-foreground">
@@ -66,7 +67,7 @@ export function HeroSection() {
             <Link to="/futures" className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-muted-foreground transition hover:border-cyan/40 hover:text-foreground hover:shadow-[0_0_20px_-8px_var(--cyan)]">Trade Futures</Link>
           </motion.div>
         </motion.div>
-        <motion.div style={{ y: yWidget, x: wx }} initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.9, delay: 0.2 }}>
+        <motion.div className="min-w-0" style={{ y: yWidget, x: wx }} initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.9, delay: 0.2 }}>
           <HeroTradingWidget />
         </motion.div>
       </div>
@@ -90,8 +91,8 @@ export function HeroTradingWidget() {
         </div>
         <TimeframeTabs id="hero-tf" value={tf} onChange={setTf} options={["1m", "15m", "1h", "1D"]} />
       </div>
-      <div className="flex items-end justify-between gap-4 py-5">
-        <div>
+      <div className="flex flex-col items-start justify-between gap-4 py-5 sm:flex-row sm:items-end">
+        <div className="min-w-0">
           <AnimatePresence mode="wait">
             <motion.div key={p} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
               <AnimatedNumber value={a.price} format={fmtPrice} className="text-4xl font-bold text-primary md:text-5xl" />
@@ -265,7 +266,7 @@ export function DeviceSection() {
   return (
     <section className={cn(wrap, "py-20")}>
       <div className="grid items-center gap-12 lg:grid-cols-2">
-        <div>
+        <div className="min-w-0">
           <SectionHead eyebrow="MULTI-PLATFORM" title="Trade Anywhere, Anytime" desc="A consistent terminal experience across desktop, tablet and mobile." />
           <Reveal className="flex flex-wrap gap-3">
             <MagneticButton variant="ghost" onClick={() => setModal("iOS")}><Apple size={16} />Download iOS</MagneticButton>
@@ -273,7 +274,7 @@ export function DeviceSection() {
             <MagneticButton variant="ghost" onClick={() => setModal("Desktop")}><Monitor size={16} />Desktop App</MagneticButton>
           </Reveal>
         </div>
-        <Reveal className="relative h-[340px] md:h-[400px]">
+        <Reveal className="relative min-w-0 h-[340px] overflow-hidden md:h-[400px]">
           <div className="absolute inset-0 rounded-full bg-primary/10 blur-[100px]" />
           <div className="absolute left-0 top-6 w-[82%] animate-floaty rounded-xl border border-border bg-card p-3 shadow-2xl">
             <div className="mb-2 flex gap-1.5"><span className="h-2 w-2 rounded-full bg-destructive/60" /><span className="h-2 w-2 rounded-full bg-warning/60" /><span className="h-2 w-2 rounded-full bg-primary/60" /></div>
@@ -350,6 +351,24 @@ export function FAQAccordion() {
             </AnimatePresence>
           </Reveal>
         ))}
+      </div>
+    </section>
+  );
+}
+
+export function CustomerServiceSection() {
+  return (
+    <section className="border-y border-border bg-surface">
+      <div className={cn(wrap, "flex flex-col items-start justify-between gap-6 py-10 sm:flex-row sm:items-center md:py-12")}>
+        <div className="max-w-xl">
+          <div className="mb-2 text-xs font-bold tracking-[0.18em] text-primary">CUSTOMER SERVICE</div>
+          <h2 className="text-2xl font-black">Questions about your account or trades?</h2>
+          <p className="mt-2 text-sm text-muted-foreground">Reach our support team for help with the NEXORA demo experience.</p>
+        </div>
+        <SupportEntryButton className="inline-flex shrink-0 items-center gap-2 rounded-md border border-primary/30 bg-primary/[0.08] px-5 py-3 text-sm font-bold text-primary transition hover:border-primary/60 hover:bg-primary/[0.14] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan">
+          <Headset size={17} aria-hidden="true" />
+          Contact Support
+        </SupportEntryButton>
       </div>
     </section>
   );

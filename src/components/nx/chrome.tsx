@@ -481,7 +481,7 @@ export function Footer() {
   ];
   return (
     <footer className="relative mt-24 border-t border-border bg-surface pb-24 md:pb-0">
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 md:grid-cols-[1.4fr_1fr_1fr_1fr_1.4fr] md:px-6">
+      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 md:grid-cols-3 md:px-6 lg:grid-cols-[1.4fr_1fr_1fr_1fr_1.4fr]">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}

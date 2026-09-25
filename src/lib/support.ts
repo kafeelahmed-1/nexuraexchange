@@ -1,6 +1,6 @@
 export const supportConfig = {
   telegramUrl: "https://t.me/NexoraExchangeSupport",
-  supportEmail: "support@nexoraexchange.demo",
+  supportEmail: "supportnexoexchange@gmail.com",
   supportSubject: "NEXORA Exchange — Customer Support",
 };
 
