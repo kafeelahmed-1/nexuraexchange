@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Search, ArrowUpDown, Check, Loader2, Star, Flame, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { fmtPrice, fmtCompact, genCandles, useMarkets, type Asset, type Candle } from "@/lib/market";
+import { fmtPrice, fmtCompact, genCandles, stableRandom, useMarkets, type Asset, type Candle } from "@/lib/market";
 import { useDemoUser } from "@/lib/demo-auth";
 import { AnimatedNumber, Skeleton, useFakeLoad } from "./motion";
 import { toggleFavorite, useLocalFeatures } from "@/lib/local-features";
@@ -242,8 +242,8 @@ export function OrderBook({ mid, base = "BTC", rows = 3, compact }: { mid: numbe
 function mkBook(mid: number, n: number) {
   const step = mid * 0.00003 + 0.0000001;
   return {
-    bids: Array.from({ length: n }, (_, i) => [mid - step * (i + 1) * 1.5, Math.random() * 2.2 + 0.2] as [number, number]),
-    asks: Array.from({ length: n }, (_, i) => [mid + step * (i + 1) * 1.5, Math.random() * 2.2 + 0.2] as [number, number]),
+    bids: Array.from({ length: n }, (_, i) => [mid - step * (i + 1) * 1.5, stableRandom(mid * 1e6 + i) * 2.2 + 0.2] as [number, number]),
+    asks: Array.from({ length: n }, (_, i) => [mid + step * (i + 1) * 1.5, stableRandom(mid * 1e6 + i + n) * 2.2 + 0.2] as [number, number]),
   };
 }
 

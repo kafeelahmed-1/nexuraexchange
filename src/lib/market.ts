@@ -15,6 +15,11 @@ export interface Asset {
   lev: number;
 }
 
+export function stableRandom(seed: number): number {
+  const value = Math.sin(seed * 12.9898 + 78.233) * 43758.5453;
+  return value - Math.floor(value);
+}
+
 const seed: [string, string, number, number, Category[], string, number][] = [
   ["BTC", "Bitcoin", 83737.64, 1.42, ["hot", "l1defi"], "#F7931A", 100],
   ["ETH", "Ethereum", 2685.84, 2.18, ["hot", "l1defi"], "#8A9BB8", 100],
@@ -52,7 +57,7 @@ function spark(base: number, trend: number): number[] {
   const out: number[] = [];
   let v = base * (1 - trend / 100);
   for (let i = 0; i < 24; i++) {
-    v = v * (1 + (Math.random() - 0.5) * 0.02 + trend / 100 / 24);
+    v = v * (1 + (stableRandom(base * 1000 + i) - 0.5) * 0.02 + trend / 100 / 24);
     out.push(v);
   }
   out[23] = base;
@@ -63,7 +68,7 @@ let assets: Asset[] = seed.map(([symbol, name, price, ch, category, color, lev])
   symbol, name, price, change24h: ch,
   high24h: price * (1 + Math.abs(ch) / 100 * 0.6 + 0.004),
   low24h: price * (1 - Math.abs(ch) / 100 * 0.8 - 0.003),
-  volume: Math.round(price * (2e5 + Math.random() * 5e6)),
+  volume: Math.round(price * (2e5 + stableRandom(price * 1e6) * 5e6)),
   sparkline: spark(price, ch),
   category, color, lev,
 }));
