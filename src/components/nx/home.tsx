@@ -150,26 +150,46 @@ export function MarketScanner() {
 }
 
 const eco = [
-  { i: Layers, t: "Spot & Margin", d: "Deep simulated books across 300+ pairs with limit, market and stop orders.", to: "/trade/BTC-USDT" },
-  { i: Zap, t: "Perpetual Futures", d: "Paper-trade perpetuals up to 100x with cross and isolated margin modes.", to: "/futures" },
-  { i: Pickaxe, t: "Mining & Earn", d: "Explore yield products with transparent terms and capacity.", to: "/earn" },
-  { i: Rocket, t: "Token Launchpad", d: "Browse simulated token launches and subscription mechanics.", to: "/launchpad" },
+  { i: Layers, t: "Spot & Margin", d: "Deep simulated books across 300+ pairs with limit, market and stop orders.", to: "/trade/BTC-USDT", label: "SPOT MARKET", preview: "BTC/USDT", detail: "300+ pairs" },
+  { i: Zap, t: "Perpetual Futures", d: "Paper-trade perpetuals up to 100x with cross and isolated margin modes.", to: "/futures", label: "PERPETUALS", preview: "BTC-PERP", detail: "Cross · Isolated" },
+  { i: Pickaxe, t: "Mining & Earn", d: "Explore yield products with transparent terms and capacity.", to: "/earn", label: "EARN PRODUCTS", preview: "Flexible terms", detail: "Capacity shown" },
+  { i: Rocket, t: "Token Launchpad", d: "Browse simulated token launches and subscription mechanics.", to: "/launchpad", label: "TOKEN LAUNCHES", preview: "Subscriptions", detail: "Preview listings" },
 ];
 export function Ecosystem() {
+  const btc = useAsset("BTC");
   return (
     <section className={cn(wrap, "py-20")}>
       <SectionHead eyebrow="ECOSYSTEM" title="Built for Retail & Institutional Traders" desc="One interface for every trading workflow — simulated end to end." />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {eco.map((e, i) => (
           <Reveal key={e.t} delay={i * 0.08}>
-            <a href={e.to}>
-              <TiltCard className="h-full p-6">
-                <div className="mb-5 inline-flex rounded-xl border border-primary/20 bg-primary/10 p-3 text-primary transition-transform duration-300 group-hover:-translate-y-1 group-hover:rotate-[-4deg]"><e.i size={22} /></div>
-                <h3 className="text-lg font-bold">{e.t}</h3>
-                <p className="mt-2 text-sm text-muted-foreground">{e.d}</p>
-                <div className="mt-6 flex items-center gap-1 text-sm font-bold text-primary">Explore <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" /></div>
+            <Link to={e.to as never} className="block h-full">
+              <TiltCard className="h-full min-h-[330px] p-5 sm:p-6">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="inline-flex rounded-lg border border-primary/20 bg-primary/10 p-2.5 text-primary transition-transform duration-300 group-hover:-translate-y-0.5"><e.i size={20} /></span>
+                  <span className="flex items-center gap-1.5 text-[9px] font-bold tracking-[0.14em] text-dim"><span className="size-1.5 rounded-full bg-warning" /> SIMULATED</span>
+                </div>
+                <div className="mt-5 text-[10px] font-bold tracking-[0.16em] text-primary">{e.label}</div>
+                <h3 className="mt-1 text-lg font-bold">{e.t}</h3>
+                <p className="mt-2 min-h-[60px] text-sm leading-5 text-muted-foreground">{e.d}</p>
+                <div className="mt-4 border-y border-border/80 bg-background/30 px-3 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="truncate text-xs font-bold">{e.preview}</div>
+                      <div className="mt-1 text-[10px] text-dim">{e.detail}</div>
+                    </div>
+                    {i < 2 ? (
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Sparkline data={btc.sparkline} w={56} h={22} positive={btc.change24h >= 0} />
+                        <span className={`num text-[10px] font-semibold ${btc.change24h >= 0 ? "text-primary" : "text-destructive"}`}>{btc.change24h > 0 ? "+" : ""}{btc.change24h.toFixed(2)}%</span>
+                      </div>
+                    ) : <ArrowRight size={15} className="shrink-0 text-dim transition-transform group-hover:translate-x-1 group-hover:text-primary" />}
+                  </div>
+                  {i < 2 && <div className="num mt-2 text-[11px] font-semibold text-foreground">{fmtPrice(btc.price)} <span className="font-normal text-dim">USDT</span></div>}
+                </div>
+                <div className="mt-4 flex items-center gap-1 text-sm font-bold text-primary">Explore <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" /></div>
               </TiltCard>
-            </a>
+            </Link>
           </Reveal>
         ))}
       </div>
@@ -195,15 +215,40 @@ export function Verification() {
   const items = [["100%", "Reserve Verification"], ["1:1", "Asset Accounting"], ["Audited", "UI Verification"], ["Multi-Layer", "Security Model"]];
   return (
     <section className={cn(wrap, "py-20")}>
-      <div className="panel grid items-center gap-10 p-6 md:grid-cols-[1fr_1.4fr] md:p-10">
-        <Reveal><Ring pct={100} label="RATIO" /></Reveal>
+      <div className="panel relative isolate overflow-hidden p-6 md:p-10">
+        <div className="pointer-events-none absolute inset-0 -z-10 grid-bg opacity-40" />
+        <div className="pointer-events-none absolute -left-24 top-1/2 -z-10 h-72 w-72 -translate-y-1/2 rounded-full bg-primary/10 blur-3xl" />
+        <div className="grid items-center gap-10 md:grid-cols-[.8fr_1.5fr]">
+          <Reveal>
+            <div className="relative mx-auto max-w-xs text-center md:mx-0">
+              <div className="absolute inset-8 rounded-full bg-primary/10 blur-2xl" />
+              <Ring pct={100} label="RATIO" />
+              <div className="mt-5 flex items-center justify-center gap-2 text-[10px] font-bold tracking-[0.16em] text-dim">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_10px_var(--primary)]" />
+                RESERVE INDEX · LIVE MODEL
+              </div>
+            </div>
+          </Reveal>
         <div>
-          <Reveal><div className="flex items-center gap-2"><SimulatedBadge>SIMULATED</SimulatedBadge></div><h2 className="mt-3 text-3xl font-black tracking-tight md:text-4xl">Transparent by Design</h2><p className="mt-3 text-muted-foreground">How a reserve-transparency dashboard could look. Nothing here reflects real assets or audits.</p></Reveal>
-          <div className="mt-6 grid grid-cols-2 gap-3">
+          <Reveal>
+            <div className="flex flex-wrap items-center gap-3"><SimulatedBadge>SIMULATED</SimulatedBadge><span className="text-[10px] font-bold tracking-[0.14em] text-dim">VERIFICATION LAYER 01</span></div>
+            <h2 className="mt-3 text-3xl font-black tracking-tight md:text-4xl">Transparent by Design</h2>
+            <p className="mt-3 max-w-2xl text-muted-foreground">How a reserve-transparency dashboard could look. Nothing here reflects real assets or audits.</p>
+          </Reveal>
+          <div className="mt-7 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {items.map(([v, l], i) => (
-              <Reveal key={l} delay={i * 0.08} className="rounded-xl border border-border bg-surface p-4"><div className="text-xl font-black text-gradient">{v}</div><div className="mt-1 text-xs text-muted-foreground">{l}</div><div className="mt-2 text-[10px] font-bold text-warning">SIMULATED</div></Reveal>
+              <Reveal key={l} delay={i * 0.08} className="group rounded-xl border border-border bg-surface/80 p-4 transition-colors duration-300 hover:border-primary/35 hover:bg-elevated/80">
+                <div className="flex items-start justify-between gap-3"><div className="text-xl font-black text-gradient">{v}</div><span className="num text-[10px] font-bold text-dim">0{i + 1}</span></div>
+                <div className="mt-1 text-xs text-muted-foreground">{l}</div>
+                <div className="mt-3 flex items-center gap-2 text-[10px] font-bold tracking-[0.1em] text-warning"><span className="h-1.5 w-1.5 rounded-full bg-warning" /> SIMULATED</div>
+              </Reveal>
             ))}
           </div>
+          <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-border pt-4 text-[10px] font-bold tracking-[0.12em] text-dim">
+            <span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-primary" /> HASH CONSISTENCY 100%</span>
+            <span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-cyan" /> LAST CHECK JUST NOW</span>
+          </div>
+        </div>
         </div>
       </div>
     </section>
@@ -218,18 +263,37 @@ const sec = [
 ];
 export function SecuritySection() {
   return (
-    <section className={cn(wrap, "py-20")}>
+    <section className={cn(wrap, "relative py-20")}>
+      <div className="pointer-events-none absolute inset-x-0 top-24 -z-10 mx-auto h-64 max-w-5xl bg-[radial-gradient(ellipse_at_center,color-mix(in_oklab,var(--cyan)_8%,transparent),transparent_68%)]" />
       <SectionHead eyebrow="SECURITY ARCHITECTURE" title="Enterprise Protection" desc="Layered security concepts with no real certifications claimed." />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="relative">
+        <div className="pointer-events-none absolute left-[12.5%] right-[12.5%] top-10 hidden h-px overflow-hidden bg-border lg:block">
+          <motion.div initial={{ scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true }} transition={{ duration: 1.4, ease: "easeOut" }} className="h-full origin-left bg-gradient-to-r from-primary/20 via-cyan to-primary/20" />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {sec.map((s, i) => (
           <Reveal key={s.t} delay={i * 0.08}>
-            <TiltCard className="h-full p-6">
-              <motion.div whileInView={s.anim} viewport={{ once: true }} transition={{ delay: 0.3 + i * 0.2, duration: 0.8 }} className="mb-5 inline-flex rounded-xl border border-cyan/20 bg-cyan/10 p-3 text-cyan"><s.i size={22} /></motion.div>
-              <h3 className="font-bold">{s.t}</h3>
-              <p className="mt-2 text-sm text-muted-foreground">{s.d}</p>
+            <TiltCard className="group/card h-full border-border/80 bg-card/80 p-6 transition-all duration-300 hover:-translate-y-1 hover:border-cyan/40 hover:shadow-[0_18px_50px_-28px_color-mix(in_oklab,var(--cyan)_55%,transparent)]">
+              <div className="mb-6 flex items-center justify-between">
+                <motion.div whileInView={s.anim} viewport={{ once: true }} transition={{ delay: 0.3 + i * 0.2, duration: 0.8 }} className="relative inline-flex rounded-xl border border-cyan/25 bg-cyan/[0.09] p-3 text-cyan shadow-[0_0_24px_-12px_var(--cyan)]">
+                  <span className="pointer-events-none absolute inset-0 rounded-xl bg-cyan/10 opacity-0 transition-opacity duration-300 group-hover/card:opacity-100" />
+                  <s.i size={22} className="relative" />
+                </motion.div>
+                <span className="num text-xs font-bold tracking-[0.14em] text-dim">0{i + 1}</span>
+              </div>
+              <h3 className="font-bold transition-colors group-hover/card:text-cyan">{s.t}</h3>
+              <p className="mt-2 min-h-10 text-sm leading-relaxed text-muted-foreground">{s.d}</p>
+              <div className="mt-5 flex items-center gap-2 border-t border-border/70 pt-4 text-[10px] font-bold tracking-[0.12em] text-dim">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/50" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+                </span>
+                CONCEPTUAL LAYER
+              </div>
             </TiltCard>
           </Reveal>
         ))}
+        </div>
       </div>
     </section>
   );
