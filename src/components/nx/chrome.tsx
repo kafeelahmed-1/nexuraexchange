@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { motion, AnimatePresence, useScroll, useSpring } from "framer-motion";
 import {
   Home,
@@ -11,10 +11,20 @@ import {
   X,
   Gift,
   LogIn,
+  LogOut,
+  Megaphone,
   Send,
   Mail,
   ShieldCheck,
   Headset,
+  Bell,
+  BellRing,
+  CheckCheck,
+  CircleDollarSign,
+  Command,
+  Search,
+  Shield,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -22,7 +32,10 @@ import { fmtPrice, useMarkets } from "@/lib/market";
 import { CoinIcon, Change } from "./market";
 import { useFinePointer } from "./motion";
 import { SupportEntryButton } from "./support";
+import { MockAppQr } from "./app-qr";
 import { supportConfig, supportMailto } from "@/lib/support";
+import { logoutDemoUser, useDemoUser } from "@/lib/demo-auth";
+import { clearNotification, markAllNotificationsRead, markNotificationRead, useLocalFeatures } from "@/lib/local-features";
 
 export function Logo({ className }: { className?: string }) {
   return (
@@ -54,24 +67,24 @@ export function Logo({ className }: { className?: string }) {
 }
 
 export function StatusBar() {
-  const [t, setT] = useState("");
-  useEffect(() => {
-    const f = () => setT(new Date().toUTCString().slice(17, 25));
-    f();
-    const i = setInterval(f, 1000);
-    return () => clearInterval(i);
-  }, []);
   return (
     <div className="hidden border-b border-border bg-surface text-[11px] text-dim md:block">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-1.5">
-        <div className="flex items-center gap-4">
-          <span className="flex items-center gap-1.5">
+      <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-6 px-6 py-1.5">
+        <div className="flex min-w-0 items-center gap-4">
+          <span className="flex shrink-0 items-center gap-1.5 font-semibold text-primary">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
-            Simulated engine operational
+            Matching Engine: 99.99% Operational
           </span>
-          <span className="num">UTC {t}</span>
+          <span className="hidden h-4 w-px bg-border sm:block" />
+          <span className="hidden min-w-0 items-center gap-2 truncate sm:flex">
+            <Megaphone size={13} className="shrink-0 text-primary" />
+            Zero-Fee Maker Promotion is now active across all major pairs!
+          </span>
         </div>
-        <span className="text-warning">Simulated data · Paper trading only</span>
+        <div className="flex shrink-0 items-center gap-6">
+          <span className="hidden sm:inline">24h Vol: <strong className="num text-foreground">$2,489,120,400</strong></span>
+          <span>Reserves: <strong className="text-primary">100% Backed</strong></span>
+        </div>
       </div>
     </div>
   );
@@ -91,6 +104,8 @@ export function MainNavbar() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const path = useRouterState({ select: (s) => s.location.pathname });
+  const { user } = useDemoUser();
+  const navigate = useNavigate();
   useEffect(() => {
     const f = () => setScrolled(window.scrollY > 20);
     f();
@@ -144,21 +159,56 @@ export function MainNavbar() {
           ))}
         </nav>
         <div className="hidden items-center gap-2 lg:flex">
-          <Link
-            to="/login"
-            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-semibold text-muted-foreground transition hover:border-primary/30 hover:text-foreground"
-          >
-            <LogIn size={15} />
-            Log in
-          </Link>
-          <Link
-            to="/register"
-            className="shine flex items-center gap-1.5 rounded-lg bg-gradient-brand px-4 py-2 text-sm font-bold text-primary-foreground"
-          >
-            <Gift size={15} />
-            Claim Bonus
-          </Link>
+          <button type="button" onClick={() => window.dispatchEvent(new Event("nexora:open-command"))} aria-label="Global search" title="Search (Ctrl+K)" className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-xs text-muted-foreground transition hover:border-primary/30 hover:text-foreground"><Search size={15} />Search <kbd className="rounded border border-border px-1.5 py-0.5 text-[10px]">Ctrl K</kbd></button>
+          <NotificationCenter />
+          {user ? (
+            <>
+              <Link
+                to="/account"
+                title={user.email}
+                className="flex max-w-44 items-center gap-1.5 truncate rounded-lg border border-border px-3 py-2 text-sm font-semibold text-muted-foreground transition hover:border-primary/30 hover:text-foreground"
+              >
+                <User size={15} />
+                <span className="truncate">{user.name || user.email}</span>
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  logoutDemoUser();
+                  void navigate({ to: "/" });
+                }}
+                className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-semibold text-muted-foreground transition hover:border-primary/30 hover:text-foreground"
+              >
+                <LogOut size={15} />
+                Log out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                to="/login"
+                className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-semibold text-muted-foreground transition hover:border-primary/30 hover:text-foreground"
+              >
+                <LogIn size={15} />
+                Log in
+              </Link>
+              <Link
+                to="/register"
+                className="shine flex items-center gap-1.5 rounded-lg bg-gradient-brand px-4 py-2 text-sm font-bold text-primary-foreground"
+              >
+                <Gift size={15} />
+                Claim Bonus
+              </Link>
+            </>
+          )}
         </div>
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new Event("nexora:open-command"))}
+          className="ml-auto rounded-md p-2 text-muted-foreground lg:hidden"
+          aria-label="Global search"
+        ><Search size={19} /></button>
+        <NotificationCenter compact />
         <button
           onClick={() => setOpen((o) => !o)}
           className="rounded-md p-2 text-muted-foreground lg:hidden"
@@ -196,26 +246,96 @@ export function MainNavbar() {
                 <Headset size={16} />
                 Support
               </SupportEntryButton>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                <Link
-                  to="/login"
-                  className="rounded-lg border border-border py-2.5 text-center font-semibold"
-                >
-                  Log in
-                </Link>
-                <Link
-                  to="/register"
-                  className="rounded-lg bg-gradient-brand py-2.5 text-center font-bold text-primary-foreground"
-                >
-                  Register
-                </Link>
-              </div>
+              {user ? (
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <Link to="/account" className="rounded-lg border border-border py-2.5 text-center font-semibold">
+                    {user.name || "Account"}
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      logoutDemoUser();
+                      void navigate({ to: "/" });
+                    }}
+                    className="flex items-center justify-center gap-2 rounded-lg border border-border py-2.5 font-semibold"
+                  >
+                    <LogOut size={15} /> Log out
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <Link
+                    to="/login"
+                    className="rounded-lg border border-border py-2.5 text-center font-semibold"
+                  >
+                    Log in
+                  </Link>
+                  <Link
+                    to="/register"
+                    className="rounded-lg bg-gradient-brand py-2.5 text-center font-bold text-primary-foreground"
+                  >
+                    Register
+                  </Link>
+                </div>
+              )}
             </div>
           </motion.nav>
         )}
       </AnimatePresence>
+      <CommandPalette />
     </header>
   );
+}
+
+function NotificationCenter({ compact = false }: { compact?: boolean }) {
+  const { notifications } = useLocalFeatures();
+  const [open, setOpen] = useState(false);
+  const unread = notifications.filter((item) => !item.read).length;
+  const icons = { price: BellRing, order: CheckCheck, deposit: CircleDollarSign, trading: TrendingUp, security: Shield, system: Bell };
+  return (
+    <div className={compact ? "lg:hidden" : "hidden lg:block"}>
+      <button type="button" onClick={() => setOpen((value) => !value)} aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`} aria-expanded={open} className="relative rounded-lg border border-border p-2 text-muted-foreground transition hover:border-primary/30 hover:text-foreground"><Bell size={17} />{unread > 0 && <span className="absolute -right-1 -top-1 grid min-h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[9px] font-black text-primary-foreground">{unread}</span>}</button>
+      {open && <div className="fixed right-3 top-16 z-[90] flex max-h-[min(70vh,560px)] w-[min(390px,calc(100vw-24px))] flex-col border border-border bg-background shadow-2xl sm:right-6"><div className="flex items-center justify-between border-b border-border px-4 py-3"><div><h2 className="text-sm font-bold">Notifications</h2><p className="text-[10px] text-dim">{unread} unread</p></div><div className="flex items-center gap-3"><button onClick={markAllNotificationsRead} disabled={unread === 0} className="text-[11px] font-semibold text-primary disabled:text-dim">Mark all read</button><button aria-label="Close notifications" onClick={() => setOpen(false)} className="p-1 text-dim hover:text-foreground">×</button></div></div><div className="min-h-0 overflow-y-auto">{notifications.map((item) => { const Icon = icons[item.type]; return <div key={item.id} className={`flex gap-3 border-b border-border px-4 py-3 ${item.read ? "" : "bg-primary/[0.035]"}`}><Icon size={16} className={`mt-0.5 shrink-0 ${item.type === "security" ? "text-warning" : "text-primary"}`} /><button className="min-w-0 flex-1 text-left" onClick={() => markNotificationRead(item.id)}><span className="block text-xs font-bold">{item.title}{!item.read && <span className="ml-2 inline-block size-1.5 rounded-full bg-primary align-middle" />}</span><span className="mt-1 block text-[11px] leading-relaxed text-muted-foreground">{item.description}</span><time className="mt-1 block text-[10px] text-dim">{new Date(item.createdAt).toLocaleString()}</time></button><button aria-label="Clear notification" onClick={() => clearNotification(item.id)} className="h-fit p-1 text-dim hover:text-destructive"><Trash2 size={13} /></button></div>; })}{notifications.length === 0 && <div className="px-5 py-10 text-center"><Bell size={20} className="mx-auto text-dim" /><p className="mt-3 text-sm font-semibold">You're all caught up</p><p className="mt-1 text-xs text-muted-foreground">Price alerts and demo activity will appear here.</p></div>}</div></div>}
+    </div>
+  );
+}
+
+function CommandPalette() {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [selected, setSelected] = useState(0);
+  const markets = useMarkets();
+  const navigate = useNavigate();
+  useEffect(() => {
+    const show = () => { setOpen(true); setQuery(""); setSelected(0); };
+    const keys = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") { event.preventDefault(); show(); }
+      if (event.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("nexora:open-command", show);
+    window.addEventListener("keydown", keys);
+    return () => { window.removeEventListener("nexora:open-command", show); window.removeEventListener("keydown", keys); };
+  }, []);
+  const staticItems = [
+    { title: "Dashboard", detail: "Overview", to: "/account" },
+    { title: "Markets", detail: "Browse simulated markets", to: "/markets" },
+    { title: "Trade", detail: "Open spot terminal", to: "/trade/BTC-USDT" },
+    { title: "Wallet", detail: "Demo portfolio", to: "/account#assets" },
+    { title: "Orders", detail: "Order history", to: "/account#orders" },
+    { title: "Settings", detail: "Demo profile", to: "/account#profile" },
+    { title: "Account", detail: "Account overview", to: "/account" },
+  ];
+  const matchingMarkets = markets.filter((asset) => `${asset.symbol} ${asset.name} ${asset.symbol}/USDT`.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 6).map((asset) => ({ title: `${asset.symbol}/USDT`, detail: `${asset.name} · ${fmtPrice(asset.price)}`, to: `/trade/${asset.symbol}-USDT` }));
+  const results = [...staticItems, ...matchingMarkets].filter((item) => !query.trim() || `${item.title} ${item.detail}`.toLowerCase().includes(query.trim().toLowerCase()));
+  useEffect(() => setSelected((value) => Math.min(value, Math.max(0, results.length - 1))), [results.length]);
+  const go = (to: string) => { setOpen(false); void navigate({ to: to as never }); };
+  const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "ArrowDown") { event.preventDefault(); setSelected((value) => Math.min(value + 1, results.length - 1)); }
+    if (event.key === "ArrowUp") { event.preventDefault(); setSelected((value) => Math.max(0, value - 1)); }
+    if (event.key === "Enter" && results[selected]) go(results[selected].to);
+  };
+  if (!open) return null;
+  return <div className="fixed inset-0 z-[100] flex items-start justify-center bg-black/65 px-3 pt-[12vh] backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false); }}><div role="dialog" aria-modal="true" aria-label="Search Nexora" className="w-full max-w-xl overflow-hidden border border-border bg-background shadow-2xl"><div className="flex items-center gap-3 border-b border-border px-4"><Search size={18} className="text-primary" /><input autoFocus value={query} onChange={(event) => { setQuery(event.target.value); setSelected(0); }} onKeyDown={onKeyDown} placeholder="Search markets, pages, assets..." className="min-h-14 min-w-0 flex-1 bg-transparent text-sm outline-none" /><kbd className="rounded border border-border px-1.5 py-1 text-[10px] text-dim">ESC</kbd></div><div className="max-h-[min(55vh,420px)] overflow-y-auto p-2">{results.map((item, index) => <button key={`${item.title}-${item.to}`} onMouseEnter={() => setSelected(index)} onClick={() => go(item.to)} className={`flex min-h-12 w-full items-center gap-3 rounded px-3 py-2 text-left ${selected === index ? "bg-primary/10 text-foreground" : "text-muted-foreground hover:bg-elevated"}`}><Command size={15} className="shrink-0 text-primary" /><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{item.title}</span><span className="block truncate text-[10px] text-dim">{item.detail}</span></span><span className="text-xs text-dim">↵</span></button>)}{results.length === 0 && <p className="px-4 py-8 text-center text-sm text-muted-foreground">No results for “{query}”.</p>}</div><div className="flex justify-between border-t border-border px-4 py-2 text-[10px] text-dim"><span>Search Nexora</span><span>↑↓ Navigate · Enter Select</span></div></div></div>;
 }
 
 export function MarketTicker() {
@@ -338,10 +458,18 @@ export function PageLoader() {
 
 export function CustomCursor() {
   const fine = useFinePointer();
+  const [enabled, setEnabled] = useState(() => {
+    if (typeof window === "undefined") return true;
+    try {
+      return window.localStorage.getItem("nexora-animated-cursor") !== "off";
+    } catch {
+      return true;
+    }
+  });
   const dot = useRef<HTMLDivElement>(null);
   const ring = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (!fine) return;
+    if (!fine || !enabled) return;
     let mx = -100,
       my = -100,
       rx = -100,
@@ -364,12 +492,12 @@ export function CustomCursor() {
         : "";
     };
     const loop = () => {
-      rx += (mx - rx) * 0.18;
-      ry += (my - ry) * 0.18;
-      if (dot.current) dot.current.style.transform = `translate(${mx - 3}px, ${my - 3}px)`;
+      rx += (mx - rx) * 0.28;
+      ry += (my - ry) * 0.28;
+      if (dot.current) dot.current.style.transform = `translate3d(${mx - 3}px, ${my - 3}px, 0)`;
       if (ring.current) {
         const s = mode === "button" ? 1.7 : mode === "link" ? 0.6 : mode === "card" ? 1.3 : 1;
-        ring.current.style.transform = `translate(${rx - 16}px, ${ry - 16}px) scale(${s})`;
+        ring.current.style.transform = `translate3d(${rx - 16}px, ${ry - 16}px, 0) scale(${s})`;
         ring.current.style.boxShadow =
           mode === "card"
             ? "0 0 24px color-mix(in oklab, var(--primary) 40%, transparent)"
@@ -386,18 +514,45 @@ export function CustomCursor() {
       window.removeEventListener("mousemove", move);
       cancelAnimationFrame(raf);
     };
-  }, [fine]);
+  }, [enabled, fine]);
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("nexora-animated-cursor", enabled ? "on" : "off");
+    } catch {
+      // Storage may be unavailable in private browsing.
+    }
+  }, [enabled]);
   if (!fine) return null;
   return (
     <>
-      <div
-        ref={dot}
-        className="pointer-events-none fixed left-0 top-0 z-[90] h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_10px_var(--primary)]"
-      />
-      <div
-        ref={ring}
-        className="pointer-events-none fixed left-0 top-0 z-[90] h-8 w-8 rounded-full border transition-[box-shadow,border-color] duration-200"
-      />
+      {enabled && (
+        <>
+          <div
+            ref={dot}
+            className="custom-cursor pointer-events-none fixed left-0 top-0 z-[90] h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_10px_var(--primary)] will-change-transform"
+          />
+          <div
+            ref={ring}
+            className="custom-cursor pointer-events-none fixed left-0 top-0 z-[90] h-8 w-8 rounded-full border transition-[box-shadow,border-color] duration-200 will-change-transform"
+          />
+        </>
+      )}
+      <button
+        type="button"
+        aria-label={`${enabled ? "Disable" : "Enable"} animated cursor`}
+        aria-pressed={enabled}
+        title={`${enabled ? "Disable" : "Enable"} animated cursor`}
+        onClick={() => setEnabled((value) => !value)}
+        className="fixed bottom-[148px] right-4 z-[95] flex h-7 w-12 items-center rounded-full border border-border bg-elevated/90 p-1 shadow-lg backdrop-blur-md transition hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:bottom-20 md:right-6"
+      >
+        <span
+          aria-hidden
+          className={cn(
+            "h-5 w-5 rounded-full transition-transform duration-200",
+            enabled ? "translate-x-5 bg-gradient-brand" : "translate-x-0 bg-dim",
+          )}
+        />
+      </button>
     </>
   );
 }
@@ -481,7 +636,7 @@ export function Footer() {
   ];
   return (
     <footer className="relative mt-24 border-t border-border bg-surface pb-24 md:pb-0">
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 md:grid-cols-3 md:px-6 lg:grid-cols-[1.4fr_1fr_1fr_1fr_1.4fr]">
+      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 md:grid-cols-3 md:px-6 lg:grid-cols-[1.25fr_1fr_1fr_1fr_1fr_1.35fr]">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -542,6 +697,17 @@ export function Footer() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.32 }}
+        >
+          <div className="flex flex-col items-start sm:items-center">
+            <MockAppQr platform="App" align="start" />
+            <div className="mt-3 max-w-[180px] text-left text-sm font-bold sm:text-center">Scan QR to Download the app Now</div>
+          </div>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.4 }}
         >
           <div className="mb-4 text-sm font-bold">Newsletter</div>
           <form

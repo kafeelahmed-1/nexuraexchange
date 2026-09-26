@@ -9,6 +9,7 @@ import { AnimatedNumber, MagneticButton, Modal, Reveal, SectionHead, TiltCard, u
 import { MarketTable, OrderBook, Sparkline, TimeframeTabs } from "./market";
 import { news } from "@/lib/content";
 import { SupportEntryButton } from "./support";
+import { MockAppQr } from "./app-qr";
 
 const wrap = "mx-auto max-w-7xl px-4 md:px-6";
 
@@ -263,35 +264,84 @@ export function OnboardingSteps() {
 export function DeviceSection() {
   const [modal, setModal] = useState<string | null>(null);
   const btc = useAsset("BTC");
+  const eth = useAsset("ETH");
   return (
-    <section className={cn(wrap, "py-20")}>
-      <div className="grid items-center gap-12 lg:grid-cols-2">
-        <div className="min-w-0">
-          <SectionHead eyebrow="MULTI-PLATFORM" title="Trade Anywhere, Anytime" desc="A consistent terminal experience across desktop, tablet and mobile." />
-          <Reveal className="flex flex-wrap gap-3">
-            <MagneticButton variant="ghost" onClick={() => setModal("iOS")}><Apple size={16} />Download iOS</MagneticButton>
-            <MagneticButton variant="ghost" onClick={() => setModal("Android")}><Smartphone size={16} />Download Android</MagneticButton>
-            <MagneticButton variant="ghost" onClick={() => setModal("Desktop")}><Monitor size={16} />Desktop App</MagneticButton>
+    <section className={cn(wrap, "py-16 md:py-20")}>
+      <div className="relative overflow-hidden rounded-[28px] border border-border bg-[#08110f] px-5 py-8 sm:px-8 md:px-10 md:py-12 lg:px-14">
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(ellipse_at_70%_50%,rgba(0,232,135,0.08),transparent_70%)]" />
+        <div className="relative grid items-center gap-10 lg:grid-cols-[1.08fr_0.92fr] lg:gap-12">
+          <div className="min-w-0">
+            <div className="text-xs font-bold tracking-[0.12em] text-primary">TRADE ANYWHERE, ANYTIME</div>
+            <h2 className="mt-4 max-w-xl text-3xl font-black leading-tight sm:text-4xl">Trade on Any Device with Full Power</h2>
+            <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground">
+              Access your trading terminal, market charts, and portfolio tools across iOS, Android, macOS, and Windows.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-2.5">
+              <MagneticButton variant="ghost" onClick={() => setModal("iOS")} className="min-w-[150px] flex-1 justify-start gap-3 px-3.5 py-3 text-left sm:flex-none">
+                <Apple size={23} className="shrink-0 text-primary" />
+                <span><span className="block text-[9px] font-medium uppercase tracking-wider text-dim">Download for</span><span className="block text-sm">App Store / iOS</span></span>
+              </MagneticButton>
+              <MagneticButton variant="ghost" onClick={() => setModal("Android")} className="min-w-[150px] flex-1 justify-start gap-3 px-3.5 py-3 text-left sm:flex-none">
+                <Smartphone size={22} className="shrink-0 text-primary" />
+                <span><span className="block text-[9px] font-medium uppercase tracking-wider text-dim">Download for</span><span className="block text-sm">Android APK</span></span>
+              </MagneticButton>
+              <MagneticButton variant="ghost" onClick={() => setModal("Desktop")} className="min-w-[150px] flex-1 justify-start gap-3 px-3.5 py-3 text-left sm:flex-none">
+                <Monitor size={22} className="shrink-0 text-primary" />
+                <span><span className="block text-[9px] font-medium uppercase tracking-wider text-dim">Desktop client</span><span className="block text-sm">Windows &amp; Mac</span></span>
+              </MagneticButton>
+            </div>
+          </div>
+
+          <Reveal className="min-w-0">
+            <div className="grid items-center gap-7 sm:grid-cols-[minmax(0,1fr)_auto]">
+              <div className="relative mx-auto w-full max-w-[420px] pb-10 pr-[8%]" aria-label="Nexora trading app on desktop and mobile">
+                <div className="rounded-xl border border-white/10 bg-[#0d171b] p-3 shadow-2xl sm:p-4">
+                  <div className="mb-3 flex items-center justify-between border-b border-white/10 pb-2">
+                    <div className="flex items-center gap-2"><span className="text-sm font-black text-primary">N</span><span className="text-[10px] font-bold tracking-widest text-muted-foreground">NEXORA</span></div>
+                    <span className="text-[9px] text-dim">MARKETS　 TRADE　 WALLET</span>
+                  </div>
+                  <div className="flex items-end justify-between gap-2">
+                    <div><div className="text-[10px] text-muted-foreground">BTC / USDT</div><div className="num mt-1 text-lg font-bold text-primary">{fmtPrice(btc.price)}</div></div>
+                    <div className="text-right"><div className="text-[9px] text-dim">24H CHANGE</div><div className="num text-xs text-primary">+2.84%</div></div>
+                  </div>
+                  <div className="mt-2"><Sparkline data={btc.sparkline} w={380} h={86} positive /></div>
+                  <div className="mt-2 grid grid-cols-3 gap-1.5">{["ETH", "SOL", "XRP"].map((symbol, index) => <div key={symbol} className="rounded-md bg-white/[0.035] px-2 py-1.5"><div className="text-[8px] text-dim">{symbol}/USDT</div><div className={`num mt-1 text-[9px] ${index === 1 ? "text-destructive" : "text-primary"}`}>{index === 0 ? fmtPrice(eth.price) : index === 1 ? "$182.40" : "$0.62"}</div></div>)}</div>
+                </div>
+                <div className="mx-auto h-3 w-[24%] bg-[#182328]" />
+                <div className="mx-auto h-2 w-[38%] rounded-b-md bg-[#243238]" />
+
+                <div className="absolute bottom-0 right-0 w-[29%] min-w-[92px] max-w-[126px] rounded-[1.35rem] border border-white/15 bg-[#05090c] p-1.5 shadow-2xl sm:p-2" style={{ animation: "floaty 5s ease-in-out infinite reverse" }}>
+                  <div className="rounded-[1rem] bg-[#0b1418] px-2 pb-2 pt-1.5">
+                    <div className="mx-auto mb-2 h-1 w-8 rounded-full bg-white/15" />
+                    <div className="flex items-center justify-between"><span className="text-[8px] font-bold text-primary">NEXORA</span><span className="text-[7px] text-dim">•••</span></div>
+                    <div className="mt-3 text-[8px] text-muted-foreground">BTC/USDT</div>
+                    <div className="num mt-0.5 text-[11px] font-bold">{fmtPrice(btc.price)}</div>
+                    <div className="mt-1"><Sparkline data={eth.sparkline} w={104} h={38} positive /></div>
+                    <div className="mt-1.5 grid grid-cols-2 gap-1"><div className="rounded bg-primary py-1 text-center text-[7px] font-bold text-primary-foreground">BUY</div><div className="rounded bg-destructive py-1 text-center text-[7px] font-bold">SELL</div></div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-col items-center justify-self-center sm:justify-self-auto">
+                <MockAppQr platform="App" />
+                <div className="mt-3 text-center">
+                  <div className="text-xs font-bold">Scan to Install App</div>
+                  <div className="mt-1 text-[11px] text-dim">Compatible with iOS &amp; Android</div>
+                </div>
+              </div>
+            </div>
           </Reveal>
         </div>
-        <Reveal className="relative min-w-0 h-[340px] overflow-hidden md:h-[400px]">
-          <div className="absolute inset-0 rounded-full bg-primary/10 blur-[100px]" />
-          <div className="absolute left-0 top-6 w-[82%] animate-floaty rounded-xl border border-border bg-card p-3 shadow-2xl">
-            <div className="mb-2 flex gap-1.5"><span className="h-2 w-2 rounded-full bg-destructive/60" /><span className="h-2 w-2 rounded-full bg-warning/60" /><span className="h-2 w-2 rounded-full bg-primary/60" /></div>
-            <div className="num text-xs text-muted-foreground">BTC/USDT</div><div className="num text-xl font-bold text-primary">{fmtPrice(btc.price)}</div>
-            <Sparkline data={btc.sparkline} w={420} h={130} positive />
-            <div className="mt-2 grid grid-cols-3 gap-2">{[1, 2, 3].map((k) => <div key={k} className="h-8 rounded bg-elevated" />)}</div>
-          </div>
-          <div className="absolute bottom-0 right-0 w-[34%] rounded-[1.6rem] border border-border bg-surface p-2.5 shadow-2xl" style={{ animation: "floaty 5s ease-in-out infinite reverse" }}>
-            <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-border" />
-            <div className="num text-[10px] text-muted-foreground">ETH/USDT</div>
-            <div className="h-24"><Sparkline data={useAsset("ETH").sparkline} w={120} h={90} /></div>
-            <div className="mt-2 grid grid-cols-2 gap-1"><div className="h-6 rounded bg-primary/80" /><div className="h-6 rounded bg-destructive/80" /></div>
-          </div>
-        </Reveal>
       </div>
       <Modal open={!!modal} onClose={() => setModal(null)} title={`${modal} app`}>
-        <p className="text-sm text-muted-foreground">There is no real {modal} app to download here.</p>
+        {modal === "iOS" || modal === "Android" ? (
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground">Scan this mock code with your {modal === "iOS" ? "iPhone" : "Android device"} camera.</p>
+            <MockAppQr platform={modal} />
+            <p className="text-xs text-muted-foreground">Preview only. The app is not available for download yet.</p>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">There is no real {modal} app to download here.</p>
+        )}
         <button onClick={() => { setModal(null); toast.info("Added to waitlist"); }} className="mt-5 w-full rounded-lg bg-primary py-2.5 text-sm font-bold text-primary-foreground">Join waitlist</button>
       </Modal>
     </section>
@@ -300,17 +350,19 @@ export function DeviceSection() {
 
 export function NewsCard({ n }: { n: (typeof news)[number] }) {
   return (
-    <Link to="/news" className="group block h-full panel overflow-hidden transition hover:-translate-y-1 hover:border-primary/30" data-cursor="card">
-      <div className="relative h-36 overflow-hidden border-b border-border bg-surface">
-        <div className="grid-bg absolute inset-0 opacity-60 transition-transform duration-500 group-hover:scale-105" />
+    <Link to="/news" className="group block h-full overflow-hidden rounded-xl border border-border bg-card transition duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_18px_50px_-30px_var(--primary)]" data-cursor="card">
+      <div className="relative h-48 overflow-hidden border-b border-border bg-surface">
+        <img src={n.image} alt={n.title} loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background/85 via-background/10 to-background/20" />
         <div className="absolute -bottom-10 left-10 h-40 w-40 rounded-full blur-3xl transition-transform duration-500 group-hover:translate-x-2" style={{ background: n.hue }} />
-        <span className="absolute left-4 top-4 rounded border border-border bg-background/70 px-2 py-0.5 text-[10px] font-bold tracking-wider text-muted-foreground">{n.cat.toUpperCase()}</span>
+        <span className="absolute left-4 top-4 rounded border border-white/15 bg-background/75 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-foreground backdrop-blur">{n.cat}</span>
+        <span className="absolute bottom-4 left-4 text-[10px] font-bold tracking-[0.12em] text-white/80">NEXORA JOURNAL</span>
       </div>
       <div className="p-5 transition-transform duration-300 group-hover:-translate-y-0.5">
-        <div className="text-xs text-dim">{n.date}</div>
-        <h3 className="mt-2 font-bold leading-snug">{n.title}</h3>
+        <time className="text-xs font-medium text-dim">{n.date}</time>
+        <h3 className="mt-2 text-lg font-bold leading-snug">{n.title}</h3>
         <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{n.excerpt}</p>
-        <div className="mt-4 flex items-center gap-1 text-sm font-bold text-primary">Read <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" /></div>
+        <div className="mt-5 flex items-center gap-2 text-sm font-bold text-primary">Read story <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" /></div>
       </div>
     </Link>
   );

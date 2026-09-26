@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAsset, fmtPrice, fmtCompact } from "@/lib/market";
-import { CandleChart, OrderBook, TimeframeTabs, TradingPanel, CoinIcon, Change } from "@/components/nx/market";
+import { CandleChart, MarketDetail, OrderBook, TimeframeTabs, TradingPanel, CoinIcon, Change } from "@/components/nx/market";
 import { AnimatedNumber } from "@/components/nx/motion";
+import { PriceAlertsPanel, TradingCalculator } from "@/components/nx/trading-features";
 
 export const Route = createFileRoute("/trade/$pair")({
   head: ({ params }) => ({ meta: [{ title: `${params.pair.replace("-", "/")} Paper Trading — NEXORA EXCHANGE` }, { name: "description", content: "Simulated spot trading terminal with candlestick chart and order book." }, { property: "og:title", content: `${params.pair} Spot Terminal — NEXORA` }, { property: "og:description", content: "Paper trading terminal." }] }),
@@ -30,6 +31,10 @@ function Trade() {
         <details open className="panel p-3"><summary className="cursor-pointer text-sm font-bold">Order Book</summary><OrderBook mid={a.price} base={a.symbol} rows={9} /></details>
       </div>
       <div className="panel p-4"><TradingPanel symbol={a.symbol} price={a.price} /></div>
+      <div className="panel p-4 sm:p-5"><PriceAlertsPanel /></div>
+      <div className="panel p-4 sm:p-5"><TradingCalculator /></div>
+      <div className="panel px-4 sm:px-5"><MarketDetail symbol={a.symbol} /></div>
+      <p className="px-1 text-[10px] text-warning">DEMO MODE · Simulated paper-trading environment. No real funds or cryptocurrency are involved.</p>
     </div>
   );
 }

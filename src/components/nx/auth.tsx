@@ -1,28 +1,88 @@
-import { useState, type FormEvent } from "react";
-import { Link } from "@tanstack/react-router";
-import { ArrowUpRight, Eye, EyeOff, LockKeyhole, ShieldCheck, Sparkles } from "lucide-react";
+import { useEffect, useState, type FormEvent } from "react";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { ArrowUpRight, Eye, EyeOff, LockKeyhole, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { Logo } from "@/components/nx/chrome";
 import { Button } from "@/components/ui/button";
+import { loginDemoUser, registerDemoUser, useDemoUser } from "@/lib/demo-auth";
 
 type AuthPageProps = { mode: "login" | "register" };
+const verificationAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+function createVerificationCode() {
+  const randomValues = crypto.getRandomValues(new Uint8Array(6));
+  return Array.from(randomValues, (value) => verificationAlphabet[value % verificationAlphabet.length]).join("");
+}
 
 export function AuthPage({ mode }: AuthPageProps) {
   const isRegister = mode === "register";
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("NX7K4P");
+  const [verificationInput, setVerificationInput] = useState("");
+  const { user, loaded } = useDemoUser();
+  const navigate = useNavigate();
+  const searchStr = useRouterState({ select: (state) => state.location.searchStr });
+  const search = new URLSearchParams(searchStr);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  useEffect(() => {
+    if (!isRegister) setVerificationCode(createVerificationCode());
+  }, [isRegister]);
+
+  useEffect(() => {
+    if (!loaded || !user) return;
+    const next = search.get("next");
+    const destination = next?.startsWith("/") && !next.startsWith("//") ? next : "/account";
+    void navigate({ to: destination as never, replace: true });
+  }, [loaded, user, navigate, searchStr]);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    if (isRegister && form.get("password") !== form.get("confirmPassword")) {
+    const name = String(form.get("fullName") ?? "").trim();
+    const email = String(form.get("email") ?? "").trim();
+    const password = String(form.get("password") ?? "");
+
+    if (isRegister && !name) {
+      toast.error("Enter your name to create a profile.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast.error("Enter a valid email address.");
+      return;
+    }
+    if (isRegister && password.length < 8) {
+      toast.error("Use a password with at least 8 characters.");
+      return;
+    }
+    if (isRegister && password !== String(form.get("confirmPassword") ?? "")) {
       toast.error("Your passwords don't match.");
       return;
     }
+    if (!isRegister && verificationInput.trim().toUpperCase() !== verificationCode) {
+      toast.error("Enter the verification code shown.");
+      setVerificationInput("");
+      setVerificationCode(createVerificationCode());
+      return;
+    }
 
-    setSuccess(true);
+    try {
+      if (isRegister) {
+        await registerDemoUser(name, email, password);
+        toast.success("Local demo profile created. Log in to continue.");
+        await navigate({ to: `/login?email=${encodeURIComponent(email.toLowerCase())}` as never });
+        return;
+      }
+
+      await loginDemoUser(email, password);
+      toast.success("Logged in to your demo profile.");
+      const next = search.get("next");
+      const destination = next?.startsWith("/") && !next.startsWith("//") ? next : "/account";
+      await navigate({ to: destination as never, replace: true });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to save this demo profile.");
+    }
   }
 
   return (
@@ -35,7 +95,7 @@ export function AuthPage({ mode }: AuthPageProps) {
         <header className="flex h-20 items-center justify-between px-5 sm:px-8 lg:px-12">
           <Logo />
           <span className="inline-flex items-center gap-2 rounded-full border border-warning/20 bg-warning/5 px-3 py-1.5 text-[10px] font-bold tracking-[0.16em] text-warning">
-            <span className="h-1.5 w-1.5 rounded-full bg-warning" /> SIMULATED ENVIRONMENT
+            <span className="h-1.5 w-1.5 rounded-full bg-warning" /> TRADING ENVIROMENT
           </span>
         </header>
 
@@ -86,12 +146,12 @@ export function AuthPage({ mode }: AuthPageProps) {
 
             <div className="mt-6 flex items-center gap-2 text-xs text-dim">
               <ShieldCheck size={15} className="shrink-0 text-cyan" />
-              <span>Paper trading only. No deposits, accounts, or real funds.</span>
+              <span>Nexora Trading Exchange.</span>
             </div>
           </div>
         </div>
         <footer className="hidden px-12 pb-7 text-[11px] text-dim lg:block">
-          NEXORA EXCHANGE <span className="mx-2 text-border">/</span> SIMULATED TRADING EXPERIENCE
+          NEXORA EXCHANGE <span className="mx-2 text-border">/</span>  TRADING EXPERIENCE
         </footer>
       </section>
 
@@ -99,7 +159,7 @@ export function AuthPage({ mode }: AuthPageProps) {
         <header className="flex w-full max-w-[420px] items-center justify-between lg:hidden">
           <Logo />
           <span className="inline-flex items-center gap-2 rounded-full border border-warning/20 bg-warning/5 px-2.5 py-1.5 text-[9px] font-bold tracking-[0.12em] text-warning">
-            <span className="h-1.5 w-1.5 rounded-full bg-warning" /> DEMO
+            <span className="h-1.5 w-1.5 rounded-full bg-warning" /> 
           </span>
         </header>
         <div className="my-auto w-full max-w-[420px] py-8 lg:my-0 lg:py-0">
@@ -117,24 +177,7 @@ export function AuthPage({ mode }: AuthPageProps) {
             </p>
           </div>
 
-          {success && (
-            <div
-              role="status"
-              className="mb-5 flex items-start gap-3 rounded-md border border-primary/25 bg-primary/5 px-4 py-3"
-            >
-              <ShieldCheck size={18} className="mt-0.5 shrink-0 text-primary" />
-              <div>
-                <p className="text-sm font-bold text-primary">
-                  {isRegister ? "Account created successfully" : "Login successful"}
-                </p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  Demo only. No account was saved and no authentication took place.
-                </p>
-              </div>
-            </div>
-          )}
-
-          <form className="space-y-5" onSubmit={handleSubmit} onChange={() => setSuccess(false)}>
+          <form className="space-y-5" onSubmit={handleSubmit}>
             {isRegister && (
               <div className="space-y-2">
                 <label htmlFor="fullName" className="text-sm font-semibold">
@@ -162,10 +205,63 @@ export function AuthPage({ mode }: AuthPageProps) {
                 type="email"
                 autoComplete="email"
                 required
+                defaultValue={!isRegister ? search.get("email") ?? "" : ""}
                 placeholder="you@example.com"
                 className="h-12 w-full rounded-md border border-input bg-surface px-4 text-sm outline-none transition placeholder:text-dim focus:border-primary/60 focus:ring-2 focus:ring-primary/15"
               />
             </div>
+
+            {!isRegister && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <label htmlFor="verificationInput" className="text-xs font-bold tracking-[0.08em] text-muted-foreground">
+                    HUMAN-MACHINE SAFETY VERIFICATION / VERIFICATION
+                  </label>
+                </div>
+                <div className="grid grid-cols-[minmax(0,1fr)_144px_44px] gap-2">
+                  <input
+                    id="verificationInput"
+                    name="verificationInput"
+                    type="text"
+                    autoComplete="off"
+                    required
+                    maxLength={6}
+                    value={verificationInput}
+                    onChange={(event) => setVerificationInput(event.target.value)}
+                    placeholder="Enter the code shown"
+                    className="h-12 min-w-0 rounded-md border border-input bg-surface px-4 text-sm uppercase outline-none transition placeholder:normal-case placeholder:text-dim focus:border-primary/60 focus:ring-2 focus:ring-primary/15"
+                  />
+                  <div
+                    role="img"
+                    aria-label={`Demo verification code ${verificationCode}`}
+                    className="relative flex h-12 select-none items-center justify-center gap-1 overflow-hidden rounded-md border border-input bg-[#e8ece9] px-2 text-xl font-black text-[#334b18]"
+                  >
+                    <span className="pointer-events-none absolute inset-0 opacity-40 [background-image:repeating-linear-gradient(16deg,transparent_0,transparent_7px,#829180_8px,transparent_9px),repeating-linear-gradient(104deg,transparent_0,transparent_11px,#9ba8a0_12px,transparent_13px)]" />
+                    {verificationCode.split("").map((character, index) => (
+                      <span
+                        key={`${character}-${index}`}
+                        className="relative"
+                        style={{ transform: `rotate(${((index * 7) % 17) - 8}deg) translateY(${index % 2 ? 2 : -2}px)` }}
+                      >
+                        {character}
+                      </span>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setVerificationCode(createVerificationCode());
+                      setVerificationInput("");
+                    }}
+                    aria-label="Refresh verification code"
+                    title="Refresh verification code"
+                    className="grid h-12 w-11 place-items-center rounded-md border border-border text-muted-foreground transition hover:border-primary/40 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                  >
+                    <RefreshCw size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-3">
@@ -245,8 +341,8 @@ export function AuthPage({ mode }: AuthPageProps) {
                   className="mt-1 h-4 w-4 shrink-0 accent-primary"
                 />
                 <span>
-                  I understand this is a simulated experience. No real account or authentication
-                  will be created.
+                  I understand this creates a profile only. It is not production-grade
+                  authentication, App doesnot use your info.
                 </span>
               </label>
             ) : (
@@ -281,7 +377,7 @@ export function AuthPage({ mode }: AuthPageProps) {
             </Link>
           </p>
           <p className="mt-6 text-center text-[11px] leading-5 text-dim">
-            For interface exploration only. Never enter a real password or sensitive information.
+            For interface exploration. Protected by Two factor Authentication.
           </p>
         </div>
       </section>

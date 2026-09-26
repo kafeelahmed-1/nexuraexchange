@@ -134,6 +134,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <PageLoader />
+      <CustomCursor />
       <ScrollProgress />
       {!isBare && <StatusBar />}
       {!isBare && <MainNavbar />}

@@ -331,26 +331,29 @@ export function NewsPage() {
           {articles.map((article) => (
             <article
               key={article.title}
-              className="group overflow-hidden rounded-xl border border-border bg-card transition hover:border-primary/30"
+              className="group flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card transition duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_18px_50px_-30px_var(--primary)]"
             >
-              <div className="relative h-32 overflow-hidden border-b border-border bg-surface">
-                <div className="grid-bg absolute inset-0 opacity-60 transition-transform duration-500 group-hover:scale-105" />
+              <div className="relative h-48 overflow-hidden border-b border-border bg-surface">
+                <img src={article.image} alt={article.title} loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/85 via-background/10 to-background/20" />
                 <div
-                  className="absolute -bottom-16 left-8 h-40 w-40 rounded-full blur-3xl"
+                  className="absolute -bottom-16 left-8 h-40 w-40 rounded-full blur-3xl transition-transform duration-500 group-hover:translate-x-2"
                   style={{ background: article.hue }}
                 />
-                <span className="absolute left-4 top-4 rounded border border-border bg-background/80 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                <span className="absolute left-4 top-4 rounded border border-white/15 bg-background/75 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-foreground backdrop-blur">
                   {article.cat}
                 </span>
+                <span className="absolute bottom-4 left-4 text-[10px] font-bold tracking-[0.12em] text-white/80">NEXORA JOURNAL</span>
               </div>
-              <div className="p-5">
-                <time className="text-xs text-dim">{article.date}</time>
+              <div className="flex flex-1 flex-col p-5">
+                <time className="text-xs font-medium text-dim">{article.date}</time>
                 <h2 className="mt-2 text-lg font-bold leading-snug">{article.title}</h2>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
                   {article.excerpt}
                 </p>
-                <div className="mt-5 border-t border-border pt-3 text-xs font-semibold text-primary">
+                <div className="mt-auto flex items-center justify-between gap-3 border-t border-border pt-4 text-xs font-semibold text-primary">
                   NEXORA editorial · Simulation notes
+                  <ArrowRight size={14} className="shrink-0 transition-transform group-hover:translate-x-1" />
                 </div>
               </div>
             </article>
