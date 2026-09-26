@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Search, ArrowUpDown, Check, Loader2, Star, Flame, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { fmtPrice, fmtCompact, genCandles, stableRandom, useMarkets, type Asset, type Candle } from "@/lib/market";
+import { fmtPrice, fmtCompact, genCandles, stableRandom, useMarkets, useAsset, type Asset, type Candle } from "@/lib/market";
 import { useDemoUser } from "@/lib/demo-auth";
 import { AnimatedNumber, Skeleton, useFakeLoad } from "./motion";
 import { toggleFavorite, useLocalFeatures } from "@/lib/local-features";
