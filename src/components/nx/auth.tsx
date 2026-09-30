@@ -146,12 +146,12 @@ export function AuthPage({ mode }: AuthPageProps) {
 
             <div className="mt-6 flex items-center gap-2 text-xs text-dim">
               <ShieldCheck size={15} className="shrink-0 text-cyan" />
-              <span>Nexora Trading Exchange.</span>
+              <span>BR Trades Trading Exchange.</span>
             </div>
           </div>
         </div>
         <footer className="hidden px-12 pb-7 text-[11px] text-dim lg:block">
-          NEXORA EXCHANGE <span className="mx-2 text-border">/</span>  TRADING EXPERIENCE
+          BR TRADES <span className="mx-2 text-border">/</span>  TRADING EXPERIENCE
         </footer>
       </section>
 
@@ -168,7 +168,7 @@ export function AuthPage({ mode }: AuthPageProps) {
               {isRegister ? "GET STARTED" : "WELCOME BACK"}
             </div>
             <h2 className="text-3xl font-black tracking-tight sm:text-4xl">
-              {isRegister ? "Create your profile" : "Log in to NEXORA"}
+              {isRegister ? "Create your profile" : "Log in to BR Trades"}
             </h2>
             <p className="mt-3 text-sm leading-6 text-muted-foreground">
               {isRegister

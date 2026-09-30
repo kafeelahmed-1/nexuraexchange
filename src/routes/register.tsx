@@ -4,15 +4,15 @@ import { AuthPage } from "@/components/nx/auth";
 export const Route = createFileRoute("/register")({
   head: () => ({
     meta: [
-      { title: "Create Profile — NEXORA EXCHANGE" },
+      { title: "Create Profile — BR TRADES" },
       {
         name: "description",
-        content: "Create a profile to explore the NEXORA Exchange interface.",
+        content: "Create a profile to explore the BR Trades Exchange interface.",
       },
-      { property: "og:title", content: "Create Profile — NEXORA EXCHANGE" },
+      { property: "og:title", content: "Create Profile — BR TRADES" },
       {
         property: "og:description",
-        content: "Create a profile to explore the NEXORA Exchange interface.",
+        content: "Create a profile to explore the BR Trades Exchange interface.",
       },
     ],
   }),

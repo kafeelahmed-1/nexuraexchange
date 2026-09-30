@@ -4,9 +4,9 @@ import { LaunchpadPage } from "@/components/nx/product-pages";
 export const Route = createFileRoute("/launchpad")({
   head: () => ({
     meta: [
-      { title: "Token Launchpad — NEXORA EXCHANGE" },
+      { title: "Token Launchpad — BR TRADES" },
       { name: "description", content: "Simulated token launches and subscription mechanics." },
-      { property: "og:title", content: "Token Launchpad — NEXORA EXCHANGE" },
+      { property: "og:title", content: "Token Launchpad — BR TRADES" },
       {
         property: "og:description",
         content: "Simulated token launches and subscription mechanics.",

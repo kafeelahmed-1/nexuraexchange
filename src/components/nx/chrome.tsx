@@ -58,9 +58,9 @@ export function Logo({ className }: { className?: string }) {
         />
       </svg>
       <span className="text-lg font-black tracking-tight">
-        NEXORA
+        BR
         <span className="ml-1 text-xs font-bold tracking-[0.2em] text-muted-foreground">
-          EXCHANGE
+          TRADES
         </span>
       </span>
     </Link>
@@ -477,20 +477,41 @@ export function CustomCursor() {
       ry = -100,
       raf = 0,
       mode = "";
+    const getBackgroundTone = (el: HTMLElement | null): "light" | "dark" | null => {
+      let node: HTMLElement | null = el;
+      while (node) {
+        const bg = window.getComputedStyle(node).backgroundColor;
+        if (bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") {
+          const match = bg.match(/\d+(?:\.\d+)?/g);
+          if (match && match.length >= 3) {
+            const [r, g, b] = match.slice(0, 3).map(Number);
+            const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+            return luminance > 0.72 ? "light" : "dark";
+          }
+        }
+        node = node.parentElement;
+      }
+      return null;
+    };
     const move = (e: MouseEvent) => {
       mx = e.clientX;
       my = e.clientY;
-      const t = (e.target as HTMLElement).closest("[data-cursor], a, button, input, img");
-      mode = t
-        ? (t as HTMLElement).dataset["cursor"] ||
-          (t.tagName === "A"
+      const nativeTarget = e.target as HTMLElement;
+      const hovered = (nativeTarget.closest("[data-cursor], a, button, input, img") as HTMLElement | null) ?? nativeTarget;
+      mode = hovered
+        ? hovered.dataset["cursor"] ||
+          (hovered.tagName === "A"
             ? "link"
-            : t.tagName === "BUTTON"
+            : hovered.tagName === "BUTTON"
               ? "button"
-              : t.tagName === "IMG"
+              : hovered.tagName === "IMG"
                 ? "img"
                 : "")
         : "";
+      if (ring.current) {
+        const tone = getBackgroundTone(hovered);
+        ring.current.style.borderColor = tone === "light" ? "rgba(15, 23, 42, 0.7)" : mode ? "var(--primary)" : "color-mix(in oklab, var(--cyan) 50%, transparent)";
+      }
     };
     const loop = () => {
       rx += (mx - rx) * 0.28;
@@ -503,9 +524,6 @@ export function CustomCursor() {
           mode === "card"
             ? "0 0 24px color-mix(in oklab, var(--primary) 40%, transparent)"
             : "none";
-        ring.current.style.borderColor = mode
-          ? "var(--primary)"
-          : "color-mix(in oklab, var(--cyan) 50%, transparent)";
       }
       raf = requestAnimationFrame(loop);
     };
@@ -733,7 +751,7 @@ export function Footer() {
       </div>
       <div className="border-t border-border">
         <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 text-xs text-dim md:flex-row md:justify-between md:px-6">
-          <span>© 2026 NEXORA EXCHANGE — Not a real exchange.</span>
+          <span>© 2026 BR TRADES — Not a real exchange.</span>
           <span className="flex items-center gap-1.5">
             <ShieldCheck size={13} />
             No real funds, licenses, reserves or customers are represented.

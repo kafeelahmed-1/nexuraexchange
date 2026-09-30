@@ -18,7 +18,7 @@ import { getDemoAccountState, saveDemoAccountState, useDemoUser, type DemoAccoun
 export const Route = createFileRoute("/checkout")({
   head: () => ({
     meta: [
-      { title: "Add Funds Preview — NEXORA EXCHANGE" },
+      { title: "Add Funds Preview — BR TRADES" },
       { name: "description", content: "Preview a local test-balance checkout." },
     ],
   }),
@@ -202,7 +202,7 @@ function CheckoutPage() {
         )}
 
         <p className="mx-auto mt-10 flex max-w-2xl items-start justify-center gap-2 text-center text-[10px] leading-5 text-dim">
-          <CircleHelp size={13} className="mt-1 shrink-0" /> NEXORA currently provides a simulated exchange interface. This checkout preview cannot accept real payments or add withdrawable funds.
+          <CircleHelp size={13} className="mt-1 shrink-0" /> BR Trades currently provides a simulated exchange interface. This checkout preview cannot accept real payments or add withdrawable funds.
         </p>
       </main>
     </>

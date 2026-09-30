@@ -159,14 +159,14 @@ export function LaunchpadPage() {
         desc="Discover simulated token launches and explore their subscription mechanics."
       />
       <main className={cn(wrap, "py-10")}>
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h2 className="text-xl font-bold">Project lineup</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <h2 className="text-2xl font-black tracking-tight text-foreground">Project lineup</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
               Fictional projects and illustrative allocations.
             </p>
           </div>
-          <div className="flex gap-2" aria-label="Filter projects by status">
+          <div className="flex flex-wrap gap-2 rounded-xl border border-border bg-card/60 p-1.5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]" aria-label="Filter projects by status">
             {(["All", "Live", "Upcoming", "Ended"] as const).map((option) => (
               <button
                 key={option}
@@ -174,10 +174,10 @@ export function LaunchpadPage() {
                 onClick={() => setStatus(option)}
                 aria-pressed={status === option}
                 className={cn(
-                  "rounded-md border px-3 py-2 text-sm font-semibold transition",
+                  "rounded-lg px-3.5 py-2 text-sm font-semibold transition-all duration-200",
                   status === option
-                    ? "border-primary/40 bg-primary/10 text-primary"
-                    : "border-border text-muted-foreground hover:text-foreground",
+                    ? "border border-primary/30 bg-primary/10 text-primary shadow-[0_0_0_1px_rgba(0,232,135,0.15)]"
+                    : "border border-transparent text-muted-foreground hover:border-border hover:text-foreground",
                 )}
               >
                 {option}
@@ -189,59 +189,65 @@ export function LaunchpadPage() {
           {projects.map((project) => (
             <article
               key={project.sym}
-              className="panel flex h-full flex-col p-5 transition hover:border-primary/30"
+              className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-[linear-gradient(180deg,rgba(13,19,25,0.96),rgba(9,14,18,0.98))] p-5 transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-[0_18px_40px_-22px_rgba(0,232,135,0.35)]"
             >
+              <div
+                className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent opacity-70"
+                aria-hidden="true"
+              />
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <span
-                    className="grid h-12 w-12 place-items-center rounded-xl border border-border bg-surface text-sm font-black"
-                    style={{ color: project.color }}
+                    className="grid h-12 w-12 place-items-center rounded-xl border border-border text-sm font-black shadow-inner shadow-black/20"
+                    style={{ color: project.color, background: `linear-gradient(135deg, ${project.color}22, rgba(255,255,255,0.02))` }}
                   >
                     {project.sym.slice(0, 2)}
                   </span>
                   <div>
-                    <h3 className="font-bold">{project.name}</h3>
-                    <span className="text-xs text-muted-foreground">{project.sym}</span>
+                    <h3 className="text-lg font-bold text-foreground">{project.name}</h3>
+                    <span className="text-xs uppercase tracking-[0.15em] text-muted-foreground">{project.sym}</span>
                   </div>
                 </div>
                 <span
                   className={cn(
-                    "rounded border px-2 py-1 text-[10px] font-bold uppercase tracking-wider",
+                    "rounded-md border px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em]",
                     project.status === "Live"
                       ? "border-primary/30 bg-primary/10 text-primary"
-                      : "border-border bg-surface text-muted-foreground",
+                      : project.status === "Upcoming"
+                        ? "border-cyan/30 bg-cyan/10 text-cyan"
+                        : "border-warning/30 bg-warning/10 text-warning",
                   )}
                 >
                   {project.status}
                 </span>
               </div>
-              <p className="mt-5 min-h-10 text-sm text-muted-foreground">{project.desc}</p>
-              <div className="mt-5 grid grid-cols-2 gap-4 border-y border-border py-4">
+              <p className="mt-5 min-h-10 text-sm leading-6 text-muted-foreground">{project.desc}</p>
+              <div className="mt-5 grid grid-cols-2 gap-4 border-y border-border/80 py-4">
                 <div>
-                  <div className="text-xs text-dim">Token price</div>
-                  <div className="num mt-1 font-bold">${project.price}</div>
+                  <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-dim">Token price</div>
+                  <div className="num mt-1 text-lg font-bold text-foreground">${project.price}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-dim">Allocation</div>
-                  <div className="num mt-1 font-bold">
+                  <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-dim">Allocation</div>
+                  <div className="num mt-1 text-lg font-bold text-foreground">
                     {project.alloc} {project.sym}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-dim">Sale window</div>
-                  <div className="mt-1 flex items-center gap-1 text-sm">
+                  <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-dim">Sale window</div>
+                  <div className="mt-1 flex items-center gap-1 text-sm text-foreground">
                     <Clock3 size={13} className="text-dim" />
                     {project.start} – {project.end}
                   </div>
                 </div>
                 <div>
-                  <div className="flex justify-between text-xs text-dim">
+                  <div className="flex justify-between text-[10px] font-medium uppercase tracking-[0.14em] text-dim">
                     <span>Raised</span>
                     <span>{project.raised}%</span>
                   </div>
                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-elevated">
                     <div
-                      className="h-full rounded-full"
+                      className="h-full rounded-full transition-all duration-500"
                       style={{ width: `${project.raised}%`, backgroundColor: project.color }}
                     />
                   </div>
@@ -255,7 +261,7 @@ export function LaunchpadPage() {
                     description: "This fictional project has no real token sale or allocation.",
                   })
                 }
-                className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-md border border-border px-4 py-2.5 text-sm font-bold transition enabled:hover:border-primary/40 enabled:hover:text-primary disabled:cursor-not-allowed disabled:opacity-45"
+                className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-surface/70 px-4 py-2.5 text-sm font-bold text-foreground transition-all duration-200 enabled:hover:border-primary/40 enabled:hover:bg-primary/5 enabled:hover:text-primary disabled:cursor-not-allowed disabled:opacity-45"
               >
                 {project.status === "Live"
                   ? "View project"
@@ -293,7 +299,7 @@ export function NewsPage() {
   return (
     <>
       <PageHeader
-        title="NEXORA News"
+        title="BR Trades News"
         desc="Platform notes, security concepts, product updates and simulated market recaps."
       />
       <main className={cn(wrap, "py-10")}>
@@ -343,7 +349,7 @@ export function NewsPage() {
                 <span className="absolute left-4 top-4 rounded border border-white/15 bg-background/75 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-foreground backdrop-blur">
                   {article.cat}
                 </span>
-                <span className="absolute bottom-4 left-4 text-[10px] font-bold tracking-[0.12em] text-white/80">NEXORA JOURNAL</span>
+                <span className="absolute bottom-4 left-4 text-[10px] font-bold tracking-[0.12em] text-white/80">BR TRADES JOURNAL</span>
               </div>
               <div className="flex flex-1 flex-col p-5">
                 <time className="text-xs font-medium text-dim">{article.date}</time>
@@ -352,7 +358,7 @@ export function NewsPage() {
                   {article.excerpt}
                 </p>
                 <div className="mt-auto flex items-center justify-between gap-3 border-t border-border pt-4 text-xs font-semibold text-primary">
-                  NEXORA editorial · Simulation notes
+                  BR Trades editorial · Simulation notes
                   <ArrowRight size={14} className="shrink-0 transition-transform group-hover:translate-x-1" />
                 </div>
               </div>
@@ -395,41 +401,47 @@ export function FeesPage() {
         desc="Review illustrative spot and futures rates, VIP tiers and estimated order costs."
       />
       <main className={cn(wrap, "py-10")}>
-        <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
+        <div className="grid gap-8 lg:grid-cols-[1.3fr_360px]">
           <section>
             <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
               <div>
-                <h2 className="text-xl font-bold">Fee schedule</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
+                <h2 className="text-[clamp(1.4rem,2vw,2rem)] font-black tracking-tight text-foreground">
+                  Fee schedule
+                </h2>
+                <p className="mt-2 text-sm text-muted-foreground">
                   Illustrative rates by 30-day trading volume.
                 </p>
               </div>
               <SimulatedBadge />
             </div>
-            <div className="overflow-x-auto rounded-xl border border-border">
-              <table className="w-full min-w-[560px] text-left text-sm">
-                <thead className="bg-surface text-xs uppercase tracking-wider text-dim">
-                  <tr>
-                    <th className="px-5 py-3 font-bold">Tier</th>
-                    <th className="px-5 py-3 font-bold">30D volume (USDT)</th>
-                    <th className="px-5 py-3 font-bold">Maker</th>
-                    <th className="px-5 py-3 font-bold">Taker</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {tiers.map((tier) => (
-                    <tr key={tier.level} className="border-t border-border bg-card">
-                      <td className="px-5 py-4 font-semibold">{tier.level}</td>
-                      <td className="num px-5 py-4 text-muted-foreground">{tier.volume}</td>
-                      <td className="num px-5 py-4 text-primary">{tier.maker}</td>
-                      <td className="num px-5 py-4">{tier.taker}</td>
+            <div className="overflow-hidden rounded-2xl border border-border bg-[linear-gradient(180deg,rgba(13,19,25,0.96),rgba(10,14,18,0.98))] shadow-[0_18px_45px_-28px_rgba(0,232,135,0.2)]">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[620px] text-left text-sm">
+                  <thead className="bg-surface/80 text-[10px] uppercase tracking-[0.16em] text-dim">
+                    <tr>
+                      <th className="px-5 py-3 font-bold">Tier</th>
+                      <th className="px-5 py-3 font-bold">30D volume</th>
+                      <th className="px-5 py-3 font-bold">Maker</th>
+                      <th className="px-5 py-3 font-bold">Taker</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {tiers.map((tier) => (
+                      <tr key={tier.level} className="border-t border-border bg-card/30">
+                        <td className="px-5 py-4 font-semibold text-foreground">{tier.level}</td>
+                        <td className="num px-5 py-4 text-muted-foreground">{tier.volume}</td>
+                        <td className="num px-5 py-4 text-primary">{tier.maker}</td>
+                        <td className="num px-5 py-4 text-foreground">{tier.taker}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
             <div className="mt-8">
-              <h2 className="text-xl font-bold">Market rates</h2>
+              <h2 className="text-[clamp(1.2rem,1.5vw,1.7rem)] font-black tracking-tight text-foreground">
+                Market rates
+              </h2>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {(["Spot", "Futures"] as const).map((kind) => (
                   <button
@@ -438,41 +450,42 @@ export function FeesPage() {
                     onClick={() => setMarket(kind)}
                     aria-pressed={market === kind}
                     className={cn(
-                      "rounded-lg border p-4 text-left transition",
+                      "rounded-2xl border p-4 text-left transition-all duration-200",
                       market === kind
-                        ? "border-primary/40 bg-primary/[0.06]"
-                        : "border-border bg-card hover:border-primary/30",
+                        ? "border-primary/40 bg-primary/[0.06] shadow-[0_0_0_1px_rgba(0,232,135,0.18)]"
+                        : "border-border bg-card/40 hover:border-primary/30 hover:bg-card",
                     )}
                   >
-                    <span className="font-bold">{kind}</span>
-                    <span className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                      <span className="text-muted-foreground">
-                        Maker{" "}
-                        <b className="num ml-1 text-foreground">
-                          {feeRates[kind].maker.toFixed(3)}%
-                        </b>
-                      </span>
-                      <span className="text-muted-foreground">
-                        Taker{" "}
-                        <b className="num ml-1 text-foreground">
-                          {feeRates[kind].taker.toFixed(3)}%
-                        </b>
-                      </span>
-                    </span>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-lg font-bold text-foreground">{kind}</span>
+                      {market === kind && <span className="rounded-full bg-primary/10 px-2 py-1 text-[9px] font-bold uppercase tracking-[0.14em] text-primary">Selected</span>}
+                    </div>
+                    <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                      <div className="rounded-lg border border-border bg-surface/50 p-2.5">
+                        <div className="text-[10px] uppercase tracking-[0.14em] text-dim">Maker</div>
+                        <div className="num mt-1 text-base font-bold text-primary">{feeRates[kind].maker.toFixed(3)}%</div>
+                      </div>
+                      <div className="rounded-lg border border-border bg-surface/50 p-2.5">
+                        <div className="text-[10px] uppercase tracking-[0.14em] text-dim">Taker</div>
+                        <div className="num mt-1 text-base font-bold text-foreground">{feeRates[kind].taker.toFixed(3)}%</div>
+                      </div>
+                    </div>
                   </button>
                 ))}
               </div>
             </div>
           </section>
-          <aside className="h-fit rounded-xl border border-border bg-card p-5">
+          <aside className="h-fit rounded-2xl border border-border bg-[linear-gradient(180deg,rgba(14,23,29,0.96),rgba(11,17,22,0.98))] p-5 shadow-[0_18px_45px_-28px_rgba(0,232,135,0.2)]">
             <div className="flex items-center gap-2">
-              <Calculator size={17} className="text-primary" />
-              <h2 className="font-bold">Fee estimator</h2>
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-primary/30 bg-primary/10 text-primary">
+                <Calculator size={16} />
+              </div>
+              <h2 className="text-xl font-black text-foreground">Fee estimator</h2>
             </div>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Estimate a single order at the selected base rates.
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+              Estimate the cost of a single order using the selected market and fee tier.
             </p>
-            <div className="mt-5 flex gap-2" aria-label="Choose market type">
+            <div className="mt-5 flex gap-2 rounded-xl border border-border bg-surface/60 p-1" aria-label="Choose market type">
               {(["Spot", "Futures"] as const).map((kind) => (
                 <button
                   key={kind}
@@ -480,17 +493,17 @@ export function FeesPage() {
                   onClick={() => setMarket(kind)}
                   aria-pressed={market === kind}
                   className={cn(
-                    "flex-1 rounded-md border px-3 py-2 text-sm font-semibold",
+                    "flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition",
                     market === kind
-                      ? "border-primary/40 bg-primary/10 text-primary"
-                      : "border-border text-muted-foreground",
+                      ? "bg-primary text-primary-foreground shadow-[0_8px_18px_-12px_rgba(0,232,135,0.8)]"
+                      : "text-muted-foreground hover:text-foreground",
                   )}
                 >
                   {kind}
                 </button>
               ))}
             </div>
-            <label className="mt-5 block text-xs font-semibold text-muted-foreground">
+            <label className="mt-5 block text-[11px] font-bold uppercase tracking-[0.14em] text-dim">
               Order value (USDT)
               <input
                 type="number"
@@ -498,23 +511,23 @@ export function FeesPage() {
                 step="any"
                 value={volume}
                 onChange={(event) => setVolume(event.target.value)}
-                className="mt-2 w-full rounded-md border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary/50"
+                className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-base text-foreground outline-none transition focus:border-primary/50"
               />
             </label>
-            <div className="mt-5 space-y-3 border-t border-border pt-4">
-              <div className="flex justify-between text-sm">
+            <div className="mt-5 space-y-3 rounded-xl border border-border bg-surface/50 p-4">
+              <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Maker fee</span>
-                <span className="num font-bold">{makerFee.toFixed(4)} USDT</span>
+                <span className="num font-bold text-primary">{makerFee.toFixed(4)} USDT</span>
               </div>
-              <div className="flex justify-between text-sm">
+              <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Taker fee</span>
-                <span className="num font-bold">{takerFee.toFixed(4)} USDT</span>
+                <span className="num font-bold text-foreground">{takerFee.toFixed(4)} USDT</span>
               </div>
             </div>
-            <p className="mt-4 text-xs leading-relaxed text-dim">
+            <div className="mt-5 rounded-xl border border-border bg-surface/50 p-3 text-xs leading-5 text-dim">
               Estimate only. Actual costs may depend on tier, order type and promotions. No real
               orders are placed.
-            </p>
+            </div>
           </aside>
         </div>
       </main>

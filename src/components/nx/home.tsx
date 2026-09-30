@@ -117,22 +117,61 @@ export function HeroTradingWidget() {
 
 export function StatStrip() {
   const s = [
-    { v: 300, f: (n: number) => `${Math.round(n)}+`, l: "Simulated markets" },
-    { v: 0.4, f: (n: number) => `<${n.toFixed(1)}ms`, l: "Matching latency" },
-    { v: 100, f: (n: number) => `${Math.round(n)}x`, l: "Max paper leverage" },
-    { v: 24, f: (n: number) => `${Math.round(n)}/7`, l: "Simulated uptime" },
+    { v: 300, f: (n: number) => `${Math.round(n)}+`, l: "Markets", tone: "green" },
+    { v: 0.4, f: (n: number) => `<${n.toFixed(1)}ms`, l: "Matching latency", tone: "cyan" },
+    { v: 100, f: (n: number) => `${Math.round(n)}x`, l: "Max leverage", tone: "teal" },
+    { v: 24, f: (n: number) => `${Math.round(n)}/7`, l: "Uptime", tone: "mint" },
   ];
+
   return (
-    <section className={cn(wrap, "py-6")}>
-      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border md:grid-cols-4">
-        {s.map((x, i) => (
-          <Reveal key={x.l} delay={i * 0.08} className="bg-card p-6">
-            <AnimatedNumber once value={x.v} format={x.f} className="text-3xl font-bold text-gradient md:text-4xl" />
-            <div className="mt-1 text-sm text-muted-foreground">{x.l}</div>
-          </Reveal>
-        ))}
+    <section className={cn(wrap, "py-8 md:py-10")}>
+      <div className="relative mx-auto max-w-[1400px] overflow-hidden rounded-[30px] border border-white/8 bg-[radial-gradient(circle_at_top,rgba(0,232,135,0.09),transparent_42%),rgba(7,13,17,0.96)] p-2 shadow-[0_25px_60px_-35px_rgba(0,232,135,0.38)] md:p-3">
+        <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-[radial-gradient(ellipse_at_center,rgba(0,232,135,0.18),transparent_65%)]" />
+
+        <div className="grid gap-2 md:grid-cols-4">
+          {s.map((x, i) => (
+            <Reveal
+              key={x.l}
+              delay={i * 0.08}
+              className="group relative overflow-hidden rounded-[22px] border border-white/6 bg-[linear-gradient(180deg,rgba(16,22,27,0.92),rgba(10,16,20,0.94))] p-5 md:p-6"
+            >
+              <div
+                className={cn(
+                  "absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100",
+                  x.tone === "green" && "bg-[radial-gradient(circle_at_top_left,rgba(0,232,135,0.18),transparent_50%)]",
+                  x.tone === "cyan" && "bg-[radial-gradient(circle_at_top_left,rgba(8,217,245,0.16),transparent_50%)]",
+                  x.tone === "teal" && "bg-[radial-gradient(circle_at_top_left,rgba(44,255,202,0.15),transparent_52%)]",
+                  x.tone === "mint" && "bg-[radial-gradient(circle_at_top_left,rgba(90,255,191,0.14),transparent_52%)]",
+                )}
+              />
+
+              <div className="relative">
+                <div className="mb-3 text-[10px] font-bold uppercase tracking-[0.22em] text-dim">
+                  {x.l}
+                </div>
+                <AnimatedNumber
+                  once
+                  value={x.v}
+                  format={x.f}
+                  className={cn(
+                    "text-[clamp(2.3rem,4vw,4.4rem)] font-black leading-[0.9] tracking-[-0.06em] text-transparent",
+                    x.tone === "green" && "bg-gradient-to-r from-[#6af7cf] via-[#1ae8b5] to-[#50d8ff] bg-clip-text",
+                    x.tone === "cyan" && "bg-gradient-to-r from-[#b7ffff] via-[#62ebff] to-[#52b9ff] bg-clip-text",
+                    x.tone === "teal" && "bg-gradient-to-r from-[#7bffdb] via-[#36f0c5] to-[#7df9ff] bg-clip-text",
+                    x.tone === "mint" && "bg-gradient-to-r from-[#abffe8] via-[#5de9c7] to-[#7ce7ff] bg-clip-text",
+                  )}
+                />
+                <div className="mt-3 h-px w-10 bg-gradient-to-r from-transparent via-white/25 to-transparent" />
+              </div>
+            </Reveal>
+          ))}
+        </div>
       </div>
-      <p className="mt-3 text-center text-[11px] text-dim">All figures are illustrative values.</p>
+
+      <p className="mt-4 text-center text-[10px] font-semibold uppercase tracking-[0.24em] text-dim">
+        ALL FIGURES ARE ILLUSTRATIVE VALUES.
+      </p>
     </section>
   );
 }
@@ -358,10 +397,10 @@ export function DeviceSection() {
 
           <Reveal className="min-w-0">
             <div className="grid items-center gap-7 sm:grid-cols-[minmax(0,1fr)_auto]">
-              <div className="relative mx-auto w-full max-w-[420px] pb-10 pr-[8%]" aria-label="Nexora trading app on desktop and mobile">
+              <div className="relative mx-auto w-full max-w-[420px] pb-10 pr-[8%]" aria-label="BR Trades trading app on desktop and mobile">
                 <div className="rounded-xl border border-white/10 bg-[#0d171b] p-3 shadow-2xl sm:p-4">
                   <div className="mb-3 flex items-center justify-between border-b border-white/10 pb-2">
-                    <div className="flex items-center gap-2"><span className="text-sm font-black text-primary">N</span><span className="text-[10px] font-bold tracking-widest text-muted-foreground">NEXORA</span></div>
+                    <div className="flex items-center gap-2"><span className="text-sm font-black text-primary">B</span><span className="text-[10px] font-bold tracking-widest text-muted-foreground">BR TRADES</span></div>
                     <span className="text-[9px] text-dim">MARKETS　 TRADE　 WALLET</span>
                   </div>
                   <div className="flex items-end justify-between gap-2">
@@ -377,7 +416,7 @@ export function DeviceSection() {
                 <div className="absolute bottom-0 right-0 w-[29%] min-w-[92px] max-w-[126px] rounded-[1.35rem] border border-white/15 bg-[#05090c] p-1.5 shadow-2xl sm:p-2" style={{ animation: "floaty 5s ease-in-out infinite reverse" }}>
                   <div className="rounded-[1rem] bg-[#0b1418] px-2 pb-2 pt-1.5">
                     <div className="mx-auto mb-2 h-1 w-8 rounded-full bg-white/15" />
-                    <div className="flex items-center justify-between"><span className="text-[8px] font-bold text-primary">NEXORA</span><span className="text-[7px] text-dim">•••</span></div>
+                    <div className="flex items-center justify-between"><span className="text-[8px] font-bold text-primary">BR TRADES</span><span className="text-[7px] text-dim">•••</span></div>
                     <div className="mt-3 text-[8px] text-muted-foreground">BTC/USDT</div>
                     <div className="num mt-0.5 text-[11px] font-bold">{fmtPrice(btc.price)}</div>
                     <div className="mt-1"><Sparkline data={eth.sparkline} w={104} h={38} positive /></div>
@@ -420,7 +459,7 @@ export function NewsCard({ n }: { n: (typeof news)[number] }) {
         <div className="absolute inset-0 bg-gradient-to-t from-background/85 via-background/10 to-background/20" />
         <div className="absolute -bottom-10 left-10 h-40 w-40 rounded-full blur-3xl transition-transform duration-500 group-hover:translate-x-2" style={{ background: n.hue }} />
         <span className="absolute left-4 top-4 rounded border border-white/15 bg-background/75 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-foreground backdrop-blur">{n.cat}</span>
-        <span className="absolute bottom-4 left-4 text-[10px] font-bold tracking-[0.12em] text-white/80">NEXORA JOURNAL</span>
+        <span className="absolute bottom-4 left-4 text-[10px] font-bold tracking-[0.12em] text-white/80">BR TRADES JOURNAL</span>
       </div>
       <div className="p-5 transition-transform duration-300 group-hover:-translate-y-0.5">
         <time className="text-xs font-medium text-dim">{n.date}</time>
@@ -434,14 +473,14 @@ export function NewsCard({ n }: { n: (typeof news)[number] }) {
 export function NewsSection() {
   return (
     <section className={cn(wrap, "py-20")}>
-      <SectionHead eyebrow="NEWSROOM" title="Latest from NEXORA" />
+      <SectionHead eyebrow="NEWSROOM" title="Latest from BR Trades" />
       <div className="grid gap-4 md:grid-cols-3">{news.slice(0, 3).map((n, i) => <Reveal key={n.title} delay={i * 0.08}><NewsCard n={n} /></Reveal>)}</div>
     </section>
   );
 }
 
 const faqs = [
-  ["Is NEXORA EXCHANGE a real exchange?", "No. All prices, balances, orders and statistics are simulated."],
+  ["Is BR TRADES a real exchange?", "No. All prices, balances, orders and statistics are simulated."],
   ["Can I deposit real crypto?", "No. Deposit addresses are placeholders. Never send real funds to any address shown here."],
   ["How are prices generated?", "A local mock engine applies controlled random variation to seed prices every few seconds."],
   ["What does 100x leverage mean here?", "It shows how a leverage selector and liquidation calculations could look. No positions are real."],
@@ -479,7 +518,7 @@ export function CustomerServiceSection() {
         <div className="max-w-xl">
           <div className="mb-2 text-xs font-bold tracking-[0.18em] text-primary">CUSTOMER SERVICE</div>
           <h2 className="text-2xl font-black">Questions about your account or trades?</h2>
-          <p className="mt-2 text-sm text-muted-foreground">Reach our support team for help with the NEXORA demo experience.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Reach our support team for help with the BR Trades demo experience.</p>
         </div>
         <SupportEntryButton className="inline-flex shrink-0 items-center gap-2 rounded-md border border-primary/30 bg-primary/[0.08] px-5 py-3 text-sm font-bold text-primary transition hover:border-primary/60 hover:bg-primary/[0.14] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan">
           <Headset size={17} aria-hidden="true" />

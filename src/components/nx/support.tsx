@@ -115,7 +115,7 @@ export function CustomerSupportWidget() {
             <div className="flex items-start justify-between gap-4 border-b border-white/[0.07] px-5 pb-4 pt-5 md:px-6 md:pt-6">
               <div>
                 <div className="flex items-center gap-2 text-[11px] font-black tracking-[0.18em] text-cyan">
-                  NEXORA SUPPORT
+                  BR TRADES SUPPORT
                 </div>
                 <Dialog.Title className="mt-2 text-xl font-bold">How can we help you?</Dialog.Title>
                 <Dialog.Description
@@ -147,7 +147,7 @@ export function CustomerSupportWidget() {
                     <div className="min-w-0 flex-1">
                       <h3 className="font-bold">Telegram Support</h3>
                       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                        Preview a  Telegram contact destination verified NEXORA account is
+                        Preview a Telegram contact destination verified BR Trades account is
                         implied.
                       </p>
                     </div>

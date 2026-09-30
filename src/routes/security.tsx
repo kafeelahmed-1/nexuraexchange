@@ -6,9 +6,9 @@ import { SupportEntryButton } from "@/components/nx/support";
 export const Route = createFileRoute("/security")({
   head: () => ({
     meta: [
-      { title: "Security — NEXORA EXCHANGE" },
+      { title: "Security — BR TRADES" },
       { name: "description", content: "Layered security concepts and design principles." },
-      { property: "og:title", content: "Security — NEXORA EXCHANGE" },
+      { property: "og:title", content: "Security — BR TRADES" },
       { property: "og:description", content: "Layered security concepts and design principles." },
     ],
   }),

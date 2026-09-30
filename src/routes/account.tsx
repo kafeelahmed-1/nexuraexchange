@@ -73,9 +73,9 @@ function recordDate(record: HistoryRecord) {
 export const Route = createFileRoute("/account")({
   head: () => ({
     meta: [
-      { title: "Account Overview — NEXORA EXCHANGE" },
+      { title: "Account Overview — BR TRADES" },
       { name: "description", content: "Balances, PnL and orders." },
-      { property: "og:title", content: "Account Overview — NEXORA EXCHANGE" },
+      { property: "og:title", content: "Account Overview — BR TRADES" },
       { property: "og:description", content: "Balances, PnL and orders." },
     ],
   }),

@@ -6,7 +6,7 @@ import { AnimatedNumber } from "@/components/nx/motion";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/futures")({
-  head: () => ({ meta: [{ title: "BTC Perpetual Futures — NEXORA EXCHANGE" }, { name: "description", content: "Paper-trade perpetual futures up to 100x with simulated liquidation and PnL." }, { property: "og:title", content: "Perpetual Futures — NEXORA" }, { property: "og:description", content: "Simulated 100x futures terminal." }] }),
+  head: () => ({ meta: [{ title: "BTC Perpetual Futures — BR TRADES" }, { name: "description", content: "Paper-trade perpetual futures up to 100x with simulated liquidation and PnL." }, { property: "og:title", content: "Perpetual Futures — BR TRADES" }, { property: "og:description", content: "Simulated 100x futures terminal." }] }),
   component: Futures,
 });
 

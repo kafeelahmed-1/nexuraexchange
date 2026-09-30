@@ -1,10 +1,10 @@
 export const supportConfig = {
   telegramUrl: "https://t.me/NexoraExchangeSupport",
   supportEmail: "supportnexoexchange@gmail.com",
-  supportSubject: "NEXORA Exchange — Customer Support",
+  supportSubject: "BR Trades — Customer Support",
 };
 
-export const supportEmailBody = `Hello NEXORA Support,\n\nI need assistance with:\n\nIssue / Question:\n\nAccount / Reference:\n\nThank you.`;
+export const supportEmailBody = `Hello BR Trades Support,\n\nI need assistance with:\n\nIssue / Question:\n\nAccount / Reference:\n\nThank you.`;
 
 const openSupportEvent = "nexora:open-support";
 

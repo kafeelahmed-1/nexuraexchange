@@ -83,7 +83,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "NEXORA EXCHANGE — Institutional Crypto Trading" },
+      { title: "BR TRADES — Institutional Crypto Trading" },
       {
         name: "description",
         content:
