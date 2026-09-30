@@ -34,7 +34,7 @@ import { useFinePointer } from "./motion";
 import { SupportEntryButton } from "./support";
 import { MockAppQr } from "./app-qr";
 import { supportConfig, supportMailto } from "@/lib/support";
-import { logoutDemoUser, useDemoUser } from "@/lib/demo-auth";
+import { logoutDemoUser, useDemoUser } from "@/lib/supabase-auth";
 import { clearNotification, markAllNotificationsRead, markNotificationRead, useLocalFeatures } from "@/lib/local-features";
 
 export function Logo({ className }: { className?: string }) {
@@ -170,9 +170,13 @@ export function MainNavbar() {
               </Link>
               <button
                 type="button"
-                onClick={() => {
-                  logoutDemoUser();
-                  void navigate({ to: "/" });
+                onClick={async () => {
+                  try {
+                    await logoutDemoUser();
+                    await navigate({ to: "/" });
+                  } catch (error) {
+                    toast.error(error instanceof Error ? error.message : "Unable to sign out.");
+                  }
                 }}
                 className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-semibold text-muted-foreground transition hover:border-primary/30 hover:text-foreground"
               >
@@ -250,9 +254,13 @@ export function MainNavbar() {
                   </Link>
                   <button
                     type="button"
-                    onClick={() => {
-                      logoutDemoUser();
-                      void navigate({ to: "/" });
+                    onClick={async () => {
+                      try {
+                        await logoutDemoUser();
+                        await navigate({ to: "/" });
+                      } catch (error) {
+                        toast.error(error instanceof Error ? error.message : "Unable to sign out.");
+                      }
                     }}
                     className="flex items-center justify-center gap-2 rounded-lg border border-border py-2.5 font-semibold"
                   >

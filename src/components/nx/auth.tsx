@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 import { Logo } from "@/components/nx/chrome";
 import { Button } from "@/components/ui/button";
-import { loginDemoUser, registerDemoUser, useDemoUser } from "@/lib/demo-auth";
+import { isAdminUser, loginDemoUser, registerDemoUser, useDemoUser } from "@/lib/supabase-auth";
 
 type AuthPageProps = { mode: "login" | "register" };
 const verificationAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -32,8 +32,12 @@ export function AuthPage({ mode }: AuthPageProps) {
 
   useEffect(() => {
     if (!loaded || !user) return;
-    const next = search.get("next");
-    const destination = next?.startsWith("/") && !next.startsWith("//") ? next : "/account";
+    const next = new URLSearchParams(searchStr).get("next");
+    const destination = isAdminUser(user)
+      ? "/admin"
+      : next?.startsWith("/") && !next.startsWith("//") && next !== "/admin"
+        ? next
+        : "/account";
     void navigate({ to: destination as never, replace: true });
   }, [loaded, user, navigate, searchStr]);
 
@@ -70,15 +74,15 @@ export function AuthPage({ mode }: AuthPageProps) {
     try {
       if (isRegister) {
         await registerDemoUser(name, email, password);
-        toast.success("Local demo profile created. Log in to continue.");
+        toast.success("Your profile was created. Check your email if verification is required, then log in.");
         await navigate({ to: `/login?email=${encodeURIComponent(email.toLowerCase())}` as never });
         return;
       }
 
       await loginDemoUser(email, password);
-      toast.success("Logged in to your demo profile.");
+      toast.success("Logged in to your profile.");
       const next = search.get("next");
-      const destination = next?.startsWith("/") && !next.startsWith("//") ? next : "/account";
+      const destination = next?.startsWith("/") && !next.startsWith("//") && next !== "/admin" ? next : "/account";
       await navigate({ to: destination as never, replace: true });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to save this demo profile.");

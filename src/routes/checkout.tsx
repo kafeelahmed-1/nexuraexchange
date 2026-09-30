@@ -13,7 +13,7 @@ import {
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/nx/motion";
-import { getDemoAccountState, saveDemoAccountState, useDemoUser, type DemoAccountState } from "@/lib/demo-auth";
+import { getDemoAccountState, saveDemoAccountState, useDemoUser, type DemoAccountState } from "@/lib/supabase-auth";
 
 export const Route = createFileRoute("/checkout")({
   head: () => ({
@@ -45,15 +45,18 @@ function CheckoutPage() {
 
   useEffect(() => {
     if (!user) return;
-    try {
-      setAccountState(getDemoAccountState(user.id));
-    } catch (error) {
+    let active = true;
+    void getDemoAccountState(user.id).then((state) => {
+      if (active) setAccountState(state);
+    }).catch((error: unknown) => {
+      if (!active) return;
       toast.error(error instanceof Error ? error.message : "Unable to load this account.");
       void navigate({ to: "/account", replace: true });
-    }
+    });
+    return () => { active = false; };
   }, [user, navigate]);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!user || !accountState || submitting) return;
     if (!Number.isFinite(amount) || amount < 5 || amount > 10_000) {
@@ -73,7 +76,7 @@ function CheckoutPage() {
       };
       const updated: DemoAccountState = {
         ...accountState,
-        assets: { ...accountState.assets, USDT: accountState.assets.USDT + amount },
+        assets: { ...accountState.assets, USDT: (accountState.assets["USDT"] ?? 0) + amount },
         portfolio: {
           ...accountState.portfolio,
           totalBalance: accountState.portfolio.totalBalance + amount,
@@ -81,10 +84,10 @@ function CheckoutPage() {
         },
         fundingHistory: [receipt, ...(accountState.fundingHistory ?? [])],
       };
-      saveDemoAccountState(updated);
+      await saveDemoAccountState(updated);
       setAccountState(updated);
       setReceiptId(receipt.id);
-      toast.success("Test balance added to your local account.");
+      toast.success("Test balance saved to your account.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to complete the local test checkout.");
     } finally {
@@ -107,7 +110,7 @@ function CheckoutPage() {
             <span className="mx-auto grid size-14 place-items-center rounded-full border border-primary/30 bg-primary/10 text-primary"><Check size={25} /></span>
             <div className="mt-5 text-xs font-bold tracking-[0.16em] text-primary">LOCAL CHECKOUT COMPLETE</div>
             <h1 className="mt-2 text-3xl font-black">Test balance added</h1>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">{formatUsd(amount)} in test USDT was added to {user.name}'s account in this browser.</p>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">{formatUsd(amount)} in test USDT was saved to {user.name}'s Supabase account.</p>
             <div className="mx-auto mt-6 max-w-sm border-y border-border py-4 text-left text-sm">
               <div className="flex justify-between gap-3"><span className="text-muted-foreground">Receipt</span><span className="num font-semibold">{receiptId}</span></div>
               <div className="mt-3 flex justify-between gap-3"><span className="text-muted-foreground">Updated available balance</span><span className="num font-semibold">{formatUsd(accountState.portfolio.availableBalance)}</span></div>
@@ -168,7 +171,7 @@ function CheckoutPage() {
 
                 <div className="flex items-start gap-3 border border-warning/20 bg-warning/[0.04] p-4 text-xs leading-5 text-muted-foreground">
                   <ShieldCheck size={17} className="mt-0.5 shrink-0 text-warning" />
-                  <p><strong className="text-warning">Preview mode:</strong> confirming adds a non-cash test balance to this browser profile. It does not contact a bank or payment processor.</p>
+                  <p><strong className="text-warning">Preview mode:</strong> confirming saves a non-cash test balance to your account. It does not contact a bank or payment processor.</p>
                 </div>
 
                 <button type="submit" disabled={submitting || amount < 5 || amount > 10000} className="flex h-12 w-full items-center justify-center gap-2 rounded-md bg-gradient-brand text-sm font-bold text-primary-foreground transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50">

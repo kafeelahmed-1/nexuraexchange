@@ -13,7 +13,7 @@ import {
   TrendingUp,
   Wallet,
 } from "lucide-react";
-import { getDemoAccountState, useDemoUser, type DemoAccountState } from "@/lib/demo-auth";
+import { getDemoAccountState, isAdminUser, useDemoUser, type DemoAccountState } from "@/lib/supabase-auth";
 import { useMarkets } from "@/lib/market";
 
 export const Route = createFileRoute("/account")({
@@ -38,19 +38,25 @@ function AccountOverview() {
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    if (loaded && !user) {
+    if (!loaded) return;
+    if (user && isAdminUser(user)) {
+      void navigate({ to: "/admin", replace: true });
+    } else if (!user) {
       void navigate({ to: "/login?next=%2Faccount" as never, replace: true });
     }
   }, [loaded, user, navigate]);
 
   useEffect(() => {
-    if (!loaded || !user) return;
-    try {
-      setAccountState(getDemoAccountState(user.id));
+    if (!loaded || !user || isAdminUser(user)) return;
+    let active = true;
+    void getDemoAccountState(user.id).then((state) => {
+      if (!active) return;
+      setAccountState(state);
       setLoadError("");
-    } catch (error) {
-      setLoadError(error instanceof Error ? error.message : "Unable to load your account.");
-    }
+    }).catch((error: unknown) => {
+      if (active) setLoadError(error instanceof Error ? error.message : "Unable to load your account.");
+    });
+    return () => { active = false; };
   }, [loaded, user, reloadKey]);
 
   const holdings = useMemo(() => {

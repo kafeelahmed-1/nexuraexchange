@@ -8,16 +8,83 @@ import {
   createDemoUserByAdmin,
   deleteDemoUser,
   getAllDemoUsers,
-  getDemoAccountState,
-  isAdminUser,
-  logoutDemoUser,
+  getAdminAccountState,
+  saveAdminAccountState,
   toggleDemoUserSuspension,
   updateDemoUserProfile,
-  saveDemoAccountState,
+} from "@/lib/supabase-admin";
+import {
+  isAdminUser,
+  loginDemoAdmin,
+  logoutDemoUser,
   useDemoUser,
   type DemoAccountState,
   type DemoProfile,
-} from "@/lib/demo-auth";
+} from "@/lib/supabase-auth";
+
+function AdminSignIn() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSubmitting(true);
+    try {
+      await loginDemoAdmin(email, password);
+      toast.success("Signed in to the admin panel.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to sign in.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <main className="grid min-h-screen place-items-center bg-background px-5">
+      <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-5">
+        <div>
+          <div className="mb-2 flex items-center gap-2 text-xs font-bold tracking-[0.16em] text-primary">
+            <ShieldCheck size={15} /> ADMINISTRATOR ACCESS
+          </div>
+          <h1 className="text-3xl font-black tracking-tight">Admin sign in</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Sign in with an administrator account to continue.</p>
+        </div>
+        <div className="space-y-2">
+          <label htmlFor="admin-email" className="text-sm font-semibold">Email address</label>
+          <input
+            id="admin-email"
+            type="email"
+            autoComplete="username"
+            required
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            className="h-12 w-full rounded-md border border-input bg-surface px-4 text-sm outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/15"
+          />
+        </div>
+        <div className="space-y-2">
+          <label htmlFor="admin-password" className="text-sm font-semibold">Password</label>
+          <input
+            id="admin-password"
+            type="password"
+            autoComplete="current-password"
+            required
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            className="h-12 w-full rounded-md border border-input bg-surface px-4 text-sm outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/15"
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={submitting}
+          className="h-12 w-full rounded-md bg-primary px-4 text-sm font-bold text-primary-foreground transition hover:opacity-90 disabled:opacity-60"
+        >
+          {submitting ? "Signing in..." : "Sign in to admin"}
+        </button>
+      </form>
+    </main>
+  );
+}
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -75,28 +142,39 @@ function AdminPanel() {
   const [balanceDrafts, setBalanceDrafts] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (loaded && !user) {
-      void navigate({ to: "/login?next=%2Fadmin" as never, replace: true });
-      return;
-    }
+    let active = true;
     if (loaded && user && !isAdminUser(user)) {
       void navigate({ to: "/account", replace: true });
-      return;
+      return () => { active = false; };
     }
     if (loaded && user) {
-      const list = getAllDemoUsers().filter((entry) => entry.role !== "admin");
-      setUsers(list);
-      if ((!selected || !list.some((entry) => entry.id === selected)) && list.length > 0 && list[0]) setSelected(list[0].id);
-      if (selected) {
-        const state = getDemoAccountState(selected);
-        setAccountState(state);
-        const profile = list.find((entry) => entry.id === selected);
-        if (profile) {
-          setProfileName(profile.name);
-          setProfileEmail(profile.email);
+      void (async () => {
+        try {
+          const list = (await getAllDemoUsers()).filter((entry) => entry.role !== "admin");
+          if (!active) return;
+          setUsers(list);
+          const nextSelected = list.some((entry) => entry.id === selected) ? selected : list[0]?.id ?? "";
+          if (nextSelected !== selected) setSelected(nextSelected);
+          if (!nextSelected) {
+            setAccountState(null);
+            return;
+          }
+          const [state, profile] = await Promise.all([
+            getAdminAccountState(nextSelected),
+            Promise.resolve(list.find((entry) => entry.id === nextSelected)),
+          ]);
+          if (!active) return;
+          setAccountState(state);
+          if (profile) {
+            setProfileName(profile.name);
+            setProfileEmail(profile.email);
+          }
+        } catch (error) {
+          if (active) toast.error(error instanceof Error ? error.message : "Unable to load users.");
         }
-      }
+      })();
     }
+    return () => { active = false; };
   }, [loaded, user, selected, navigate]);
 
   useEffect(() => {
@@ -116,13 +194,16 @@ function AdminPanel() {
     [users, selected],
   );
 
-  if (!loaded || !user || !isAdminUser(user)) {
+  if (!loaded) {
     return <main className="min-h-[45vh]" aria-busy="true" />;
   }
+  if (!user) return <AdminSignIn />;
+  if (!isAdminUser(user)) return <main className="min-h-[45vh]" aria-busy="true" />;
 
-  const refreshAccount = (userId: string) => {
-    setAccountState(getDemoAccountState(userId));
-    setUsers(getAllDemoUsers().filter((entry) => entry.role !== "admin"));
+  const refreshAccount = async (userId: string) => {
+    const [state, users] = await Promise.all([getAdminAccountState(userId), getAllDemoUsers()]);
+    setAccountState(state);
+    setUsers(users.filter((entry) => entry.role !== "admin"));
   };
 
   const handleAddUser = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -136,7 +217,7 @@ function AdminPanel() {
       setName("");
       setEmail("");
       setPassword("");
-      const next = getAllDemoUsers().filter((entry) => entry.role !== "admin");
+      const next = (await getAllDemoUsers()).filter((entry) => entry.role !== "admin");
       setUsers(next);
       setSelected(createdUser.id);
       toast.success("User account created");
@@ -145,27 +226,33 @@ function AdminPanel() {
     }
   };
 
-  const handleSuspend = () => {
+  const handleSuspend = async () => {
     if (!selectedUser) return;
-    const next = toggleDemoUserSuspension(selectedUser.id);
-    if (next) {
+    try {
+      const next = await toggleDemoUserSuspension(selectedUser.id);
       setUsers((current) => current.map((entry) => (entry.id === next.id ? next : entry)));
       toast.success(next.suspended ? "User suspended" : "User reactivated");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to update user status.");
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!selectedUser) return;
     if (selectedUser.role === "admin") {
       toast.error("Admin accounts cannot be removed here.");
       return;
     }
-    if (!window.confirm(`Remove ${selectedUser.email} and all of their local account data?`)) return;
-    deleteDemoUser(selectedUser.id);
-    const next = getAllDemoUsers().filter((entry) => entry.role !== "admin");
-    setUsers(next);
-    setSelected(next[0]?.id ?? "");
-    toast.success("User removed");
+    if (!window.confirm(`Remove ${selectedUser.email} and all of their account data?`)) return;
+    try {
+      await deleteDemoUser(selectedUser.id);
+      const next = (await getAllDemoUsers()).filter((entry) => entry.role !== "admin");
+      setUsers(next);
+      setSelected(next[0]?.id ?? "");
+      toast.success("User removed");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to remove user.");
+    }
   };
 
   const handleProfileSave = async () => {
@@ -189,18 +276,18 @@ function AdminPanel() {
 
   const tradeHistory = (accountState?.orders.tradeHistory ?? []) as Array<Record<string, unknown>>;
 
-  const handleManualPnl = (tradeId: string, pnl: number) => {
+  const handleManualPnl = async (tradeId: string, pnl: number) => {
     if (!selectedUser) return;
     try {
-      applyTradeManualPnl(selectedUser.id, tradeId, pnl);
-      refreshAccount(selectedUser.id);
+      await applyTradeManualPnl(selectedUser.id, tradeId, pnl);
+      await refreshAccount(selectedUser.id);
       toast.success("Trade outcome and user balance updated");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to update trade P&L.");
     }
   };
 
-  const handleBalanceAdjust = () => {
+  const handleBalanceAdjust = async () => {
     if (!selectedUser) return;
     const numeric = Number(delta);
     if (!Number.isFinite(numeric)) {
@@ -208,8 +295,8 @@ function AdminPanel() {
       return;
     }
     try {
-      adjustBalance(selectedUser.id, { deltaUSDT: numeric });
-      refreshAccount(selectedUser.id);
+      await adjustBalance(selectedUser.id, { deltaUSDT: numeric });
+      await refreshAccount(selectedUser.id);
       toast.success("Available balance updated");
       setDelta("0");
     } catch (error) {
@@ -217,21 +304,21 @@ function AdminPanel() {
     }
   };
 
-  const handleSetBalance = (field: "availableBalance" | "totalBalance" | "realizedPnL" | "unrealizedPnL", value: number) => {
+  const handleSetBalance = async (field: "availableBalance" | "totalBalance" | "realizedPnL" | "unrealizedPnL", value: number) => {
     if (!selectedUser || !accountState || !Number.isFinite(value)) {
       toast.error("Enter a valid number.");
       return;
     }
     try {
-      adjustBalance(selectedUser.id, { [field]: value } as Partial<DemoAccountState["portfolio"]> & { deltaUSDT?: number });
-      refreshAccount(selectedUser.id);
+      await adjustBalance(selectedUser.id, { [field]: value } as Partial<DemoAccountState["portfolio"]> & { deltaUSDT?: number });
+      await refreshAccount(selectedUser.id);
       toast.success(`${field} updated`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to update this account value.");
     }
   };
 
-  const handleSaveAccountData = () => {
+  const handleSaveAccountData = async () => {
     if (!selectedUser) return;
     try {
       const parsed: unknown = JSON.parse(accountJson);
@@ -239,8 +326,8 @@ function AdminPanel() {
         setAccountJsonError("The record must match this user and contain valid portfolio, asset, order, funding and watchlist data.");
         return;
       }
-      saveDemoAccountState(parsed);
-      refreshAccount(selectedUser.id);
+      await saveAdminAccountState(parsed);
+      await refreshAccount(selectedUser.id);
       toast.success("Account data saved");
     } catch (error) {
       setAccountJsonError(error instanceof Error ? error.message : "Account data is not valid JSON.");
@@ -275,7 +362,7 @@ function AdminPanel() {
             </div>
             <div className="flex items-center gap-3">
               <div className="hidden text-right sm:block"><div className="text-xs font-semibold">{user.name}</div><div className="mt-0.5 text-[10px] text-dim">{user.email}</div></div>
-              <button type="button" onClick={() => { logoutDemoUser(); void navigate({ to: "/login?next=%2Fadmin" as never, replace: true }); }} className="inline-flex min-h-10 items-center gap-2 border border-border px-3 text-xs font-semibold text-muted-foreground transition hover:border-destructive/40 hover:text-destructive"><LogOut size={14} /> Sign out</button>
+              <button type="button" onClick={async () => { try { await logoutDemoUser(); await navigate({ to: "/admin", replace: true }); } catch (error) { toast.error(error instanceof Error ? error.message : "Unable to sign out."); } }} className="inline-flex min-h-10 items-center gap-2 border border-border px-3 text-xs font-semibold text-muted-foreground transition hover:border-destructive/40 hover:text-destructive"><LogOut size={14} /> Sign out</button>
             </div>
           </div>
         </header>

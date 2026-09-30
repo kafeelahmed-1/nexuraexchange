@@ -10,7 +10,7 @@ import {
   getDemoAccountState,
   InsufficientBalanceError,
   useDemoUser,
-} from "@/lib/demo-auth";
+} from "@/lib/supabase-auth";
 import { AnimatedNumber, Skeleton, useFakeLoad } from "./motion";
 import { toggleFavorite, useLocalFeatures } from "@/lib/local-features";
 
@@ -359,25 +359,25 @@ export function TradingPanel({ symbol, price }: { symbol: string; price: number 
       setBalanceLoaded(true);
       return;
     }
+    let active = true;
     const refreshBalances = () => {
-      try {
-        const state = getDemoAccountState(user.id);
-        setAvailableUsdt(state.assets.USDT ?? 0);
+      void getDemoAccountState(user.id).then((state) => {
+        if (!active) return;
+        setAvailableUsdt(state.assets["USDT"] ?? 0);
         setAvailableAsset(state.assets[symbol] ?? 0);
         setOrderError(null);
-      } catch (error) {
-        setOrderError({
+      }).catch((error: unknown) => {
+        if (active) setOrderError({
           side: "buy",
           message: error instanceof Error ? error.message : "Unable to load your account balance.",
         });
-      } finally {
-        setBalanceLoaded(true);
-      }
+      }).finally(() => { if (active) setBalanceLoaded(true); });
     };
     refreshBalances();
     window.addEventListener("nexora:demo-account-state-changed", refreshBalances);
     window.addEventListener("storage", refreshBalances);
     return () => {
+      active = false;
       window.removeEventListener("nexora:demo-account-state-changed", refreshBalances);
       window.removeEventListener("storage", refreshBalances);
     };
@@ -395,7 +395,7 @@ export function TradingPanel({ symbol, price }: { symbol: string; price: number 
     }
   };
 
-  const submitOrder = (side: "buy" | "sell") => {
+  const submitOrder = async (side: "buy" | "sell") => {
     if (!user) {
       const next = encodeURIComponent(`/trade/${symbol}-USDT`);
       void navigate({ to: `/login?next=${next}` as never });
@@ -410,8 +410,8 @@ export function TradingPanel({ symbol, price }: { symbol: string; price: number 
 
     setSubmitting(side);
     try {
-      const result = executeSpotMarketOrder(user.id, symbol, side, amount, price, marketPrices);
-      setAvailableUsdt(result.state.assets.USDT ?? 0);
+      const result = await executeSpotMarketOrder(user.id, symbol, side, amount, price, marketPrices);
+      setAvailableUsdt(result.state.assets["USDT"] ?? 0);
       setAvailableAsset(result.state.assets[symbol] ?? 0);
       if (side === "buy") {
         setBuyAmount("");
