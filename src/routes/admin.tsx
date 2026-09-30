@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { Activity, ArrowLeft, ArrowRight, CreditCard, Pencil, ShieldCheck, Trash2, UserPlus, Users, Wallet } from "lucide-react";
-import { PageHeader } from "@/components/nx/motion";
+import { Activity, ArrowRight, CreditCard, LogOut, Pencil, ShieldCheck, Trash2, UserPlus, Users, Wallet } from "lucide-react";
 import {
   adjustBalance,
   applyTradeManualPnl,
@@ -11,6 +10,7 @@ import {
   getAllDemoUsers,
   getDemoAccountState,
   isAdminUser,
+  logoutDemoUser,
   toggleDemoUserSuspension,
   updateDemoUserProfile,
   saveDemoAccountState,
@@ -43,12 +43,15 @@ function isEditableAccountState(value: unknown, userId: string): value is DemoAc
     && !!portfolio
     && [portfolio.totalBalance, portfolio.availableBalance, portfolio.unrealizedPnL, portfolio.realizedPnL].every(Number.isFinite)
     && !!assets
-    && [assets.USDT, assets.BTC, assets.ETH, assets.SOL, assets.BNB, assets.XRP, assets.DOGE].every(Number.isFinite)
+    && Object.values(assets).every(Number.isFinite)
+    && ["USDT", "BTC", "ETH", "SOL", "BNB", "XRP", "DOGE"].every((symbol) => Number.isFinite(assets[symbol]))
     && !!state.orders
     && Array.isArray(state.orders.openOrders)
     && Array.isArray(state.orders.orderHistory)
     && Array.isArray(state.orders.tradeHistory)
     && Array.isArray(state.fundingHistory)
+    && (state.positions === undefined || (!!state.positions && typeof state.positions === "object" && !Array.isArray(state.positions)
+      && Object.values(state.positions).every((position) => Number.isFinite(position.quantity) && Number.isFinite(position.averageEntryPrice))))
     && Array.isArray(state.watchlist)
     && state.watchlist.every((item) => typeof item === "string");
 }
@@ -188,18 +191,30 @@ function AdminPanel() {
 
   const handleManualPnl = (tradeId: string, pnl: number) => {
     if (!selectedUser) return;
-    applyTradeManualPnl(selectedUser.id, tradeId, pnl);
-    refreshAccount(selectedUser.id);
-    toast.success("Trade P&L override saved");
+    try {
+      applyTradeManualPnl(selectedUser.id, tradeId, pnl);
+      refreshAccount(selectedUser.id);
+      toast.success("Trade outcome and user balance updated");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to update trade P&L.");
+    }
   };
 
   const handleBalanceAdjust = () => {
     if (!selectedUser) return;
-    const numeric = Number(delta) || 0;
-    adjustBalance(selectedUser.id, { deltaUSDT: numeric });
-    refreshAccount(selectedUser.id);
-    toast.success("Balance updated");
-    setDelta("0");
+    const numeric = Number(delta);
+    if (!Number.isFinite(numeric)) {
+      toast.error("Enter a valid USDT adjustment.");
+      return;
+    }
+    try {
+      adjustBalance(selectedUser.id, { deltaUSDT: numeric });
+      refreshAccount(selectedUser.id);
+      toast.success("Available balance updated");
+      setDelta("0");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to update the user balance.");
+    }
   };
 
   const handleSetBalance = (field: "availableBalance" | "totalBalance" | "realizedPnL" | "unrealizedPnL", value: number) => {
@@ -207,12 +222,13 @@ function AdminPanel() {
       toast.error("Enter a valid number.");
       return;
     }
-    const changes = field === "totalBalance"
-      ? { availableBalance: value - accountState.portfolio.unrealizedPnL - accountState.portfolio.realizedPnL }
-      : { [field]: value };
-    adjustBalance(selectedUser.id, changes as Partial<DemoAccountState["portfolio"]> & { deltaUSDT?: number });
-    refreshAccount(selectedUser.id);
-    toast.success(`${field} updated`);
+    try {
+      adjustBalance(selectedUser.id, { [field]: value } as Partial<DemoAccountState["portfolio"]> & { deltaUSDT?: number });
+      refreshAccount(selectedUser.id);
+      toast.success(`${field} updated`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to update this account value.");
+    }
   };
 
   const handleSaveAccountData = () => {
@@ -239,15 +255,33 @@ function AdminPanel() {
     fundingHistory: [],
     watchlist: [],
   };
+  const balanceFields = [
+    { label: "Available", field: "availableBalance" },
+    { label: "Total equity", field: "totalBalance" },
+    { label: "Unrealized P&L", field: "unrealizedPnL" },
+    { label: "Realized P&L", field: "realizedPnL" },
+  ] as const;
 
   return (
-    <>
-      <PageHeader title="Admin Panel" desc="Manage users, balances, account states and simulated P&L outcomes." />
-      <main className="mx-auto max-w-7xl px-4 py-8 md:px-6">
+      <main className="min-h-screen bg-background">
+        <header className="border-b border-border bg-surface/75">
+          <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-4 px-4 py-4 md:px-6">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="grid size-10 shrink-0 place-items-center border border-primary/25 bg-primary/[0.07] text-primary"><ShieldCheck size={19} /></span>
+              <div className="min-w-0">
+                <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">NEXORA · ADMIN CONSOLE</div>
+                <h1 className="mt-0.5 truncate text-lg font-bold">Account operations</h1>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="hidden text-right sm:block"><div className="text-xs font-semibold">{user.name}</div><div className="mt-0.5 text-[10px] text-dim">{user.email}</div></div>
+              <button type="button" onClick={() => { logoutDemoUser(); void navigate({ to: "/login?next=%2Fadmin" as never, replace: true }); }} className="inline-flex min-h-10 items-center gap-2 border border-border px-3 text-xs font-semibold text-muted-foreground transition hover:border-destructive/40 hover:text-destructive"><LogOut size={14} /> Sign out</button>
+            </div>
+          </div>
+        </header>
+        <div className="mx-auto max-w-[1600px] px-4 py-6 md:px-6 md:py-8">
         <div className="mb-6 flex items-center justify-between gap-3">
-          <Link to="/account" className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground transition hover:text-primary">
-            <ArrowLeft size={14} /> Back to account
-          </Link>
+          <div><h2 className="text-sm font-bold">Users and account controls</h2><p className="mt-1 text-xs text-muted-foreground">Manage access, balances, and simulated trade outcomes.</p></div>
           <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-primary">
             <ShieldCheck size={12} /> Admin access
           </span>
@@ -344,23 +378,18 @@ function AdminPanel() {
                       <h3 className="text-lg font-black">Account balance</h3>
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2">
-                      {[
-                        ["Available", "availableBalance", adminState.portfolio.availableBalance],
-                        ["Total", "totalBalance", adminState.portfolio.totalBalance],
-                        ["Unrealized P&L", "unrealizedPnL", adminState.portfolio.unrealizedPnL],
-                        ["Realized P&L", "realizedPnL", adminState.portfolio.realizedPnL],
-                      ].map(([label, value]) => (
-                        <div key={String(value)} className="rounded-xl border border-border bg-surface p-3">
+                      {balanceFields.map(({ label, field }) => (
+                        <div key={field} className="rounded-xl border border-border bg-surface p-3">
                           <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-dim">{label}</label>
                           <div className="mt-2 flex gap-2">
                             <input
                               type="number"
                               step="any"
-                              value={balanceDrafts[String(value)] ?? ""}
-                              onChange={(event) => setBalanceDrafts((current) => ({ ...current, [String(value)]: event.target.value }))}
+                              value={balanceDrafts[field] ?? String(adminState.portfolio[field])}
+                              onChange={(event) => setBalanceDrafts((current) => ({ ...current, [field]: event.target.value }))}
                               className="num min-w-0 flex-1 rounded-md border border-border bg-background px-2 py-1.5 text-sm font-bold outline-none focus:border-primary/50"
                             />
-                            <button type="button" onClick={() => handleSetBalance(String(value) as "availableBalance" | "totalBalance" | "realizedPnL" | "unrealizedPnL", Number(balanceDrafts[String(value)]))} className="rounded-md border border-border px-2 text-[10px] font-bold hover:border-primary/40">Save</button>
+                            <button type="button" onClick={() => handleSetBalance(field, Number(balanceDrafts[field] ?? adminState.portfolio[field]))} className="rounded-md border border-border px-2 text-[10px] font-bold hover:border-primary/40">Save</button>
                           </div>
                         </div>
                       ))}
@@ -369,7 +398,7 @@ function AdminPanel() {
                     <div className="mt-5 space-y-3">
                       <label className="block text-sm">
                         <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-dim">Manual USDT adjustment</span>
-                        <input value={delta} onChange={(event) => setDelta(event.target.value)} className="w-full rounded-lg border border-border bg-background px-3 py-2.5 outline-none focus:border-primary/50" />
+                        <input type="number" step="any" value={delta} onChange={(event) => setDelta(event.target.value)} className="w-full rounded-lg border border-border bg-background px-3 py-2.5 outline-none focus:border-primary/50" />
                       </label>
                       <button type="button" onClick={handleBalanceAdjust} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-brand px-3 py-2.5 text-sm font-bold text-primary-foreground">
                         <CreditCard size={14} /> Apply balance change
@@ -400,6 +429,8 @@ function AdminPanel() {
                               </div>
                               <div className="mt-3 flex items-center gap-2">
                                 <input
+                                  type="number"
+                                  step="any"
                                   value={tradeOverride[tradeId] ?? String(pnl)}
                                   onChange={(event) => setTradeOverride((current) => ({ ...current, [tradeId]: event.target.value }))}
                                   className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm outline-none focus:border-primary/50"
@@ -444,7 +475,7 @@ function AdminPanel() {
             )}
           </div>
         </div>
+        </div>
       </main>
-    </>
   );
 }

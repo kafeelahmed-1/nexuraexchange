@@ -1,74 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { PageHeader } from "@/components/nx/motion";
 import {
   Activity,
-  ArrowDownLeft,
   ArrowDownToLine,
+  ArrowRight,
   ArrowUpRight,
-  ChartNoAxesCombined,
-  ChevronRight,
-  CircleHelp,
-  ClipboardList,
-  Download,
-  FileSpreadsheet,
-  Headset,
-  LayoutDashboard,
-  ListOrdered,
-  Search,
+  Clock3,
+  Eye,
+  EyeOff,
   ShieldCheck,
-  Star,
-  Trash2,
-  UserRound,
+  TrendingDown,
+  TrendingUp,
   Wallet,
 } from "lucide-react";
-import { SupportEntryButton } from "@/components/nx/support";
 import { getDemoAccountState, useDemoUser, type DemoAccountState } from "@/lib/demo-auth";
 import { useMarkets } from "@/lib/market";
-import { toast } from "sonner";
-import { toggleFavorite, useLocalFeatures } from "@/lib/local-features";
-import { PriceAlertsPanel } from "@/components/nx/trading-features";
-
-type ReportRange = "today" | "7d" | "30d" | "all";
-type HistoryRecord = Record<string, unknown>;
-
-function exportCsv(name: string, rows: unknown[]) {
-  const records = rows.filter((row): row is HistoryRecord => !!row && typeof row === "object" && !Array.isArray(row));
-  if (records.length === 0) {
-    toast.info("No records to export yet.");
-    return;
-  }
-  const headers = [...new Set(records.flatMap((row) => Object.keys(row)))];
-  const csv = [headers, ...records.map((row) => headers.map((header) => row[header]))]
-    .map((line) => line.map((value) => `"${String(value ?? "").replaceAll('"', '""')}"`).join(","))
-    .join("\r\n");
-  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = `nexora-${name}-${new Date().toISOString().slice(0, 10)}.csv`;
-  anchor.click();
-  URL.revokeObjectURL(url);
-  toast.success("CSV export prepared");
-}
-
-function recordNumber(record: HistoryRecord, keys: string[]) {
-  for (const key of keys) {
-    const value = record[key];
-    if (typeof value === "number" && Number.isFinite(value)) return value;
-    if (typeof value === "string" && value.trim() && Number.isFinite(Number(value))) return Number(value);
-  }
-  return null;
-}
-
-function recordDate(record: HistoryRecord) {
-  const value = record.createdAt ?? record.timestamp ?? record.time ?? record.date;
-  if (typeof value === "number") return new Date(value < 10_000_000_000 ? value * 1000 : value);
-  if (typeof value === "string") {
-    const parsed = new Date(value);
-    if (Number.isFinite(parsed.getTime())) return parsed;
-  }
-  return null;
-}
 
 export const Route = createFileRoute("/account")({
   head: () => ({
@@ -83,14 +29,13 @@ export const Route = createFileRoute("/account")({
 });
 
 function AccountOverview() {
-  const markets = useMarkets();
   const { user, loaded } = useDemoUser();
-  const { favorites } = useLocalFeatures();
   const navigate = useNavigate();
+  const markets = useMarkets();
   const [accountState, setAccountState] = useState<DemoAccountState | null>(null);
-  const [activeSection, setActiveSection] = useState("overview");
-  const [watchQuery, setWatchQuery] = useState("");
-  const [reportRange, setReportRange] = useState<ReportRange>("all");
+  const [loadError, setLoadError] = useState("");
+  const [showBalances, setShowBalances] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (loaded && !user) {
@@ -99,357 +44,548 @@ function AccountOverview() {
   }, [loaded, user, navigate]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!loaded || !user) return;
     try {
       setAccountState(getDemoAccountState(user.id));
+      setLoadError("");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to load your demo portfolio.");
-      setAccountState({
-        userId: user.id,
-        portfolio: { totalBalance: 0, availableBalance: 0, unrealizedPnL: 0, realizedPnL: 0 },
-        assets: { USDT: 0, BTC: 0, ETH: 0, SOL: 0, BNB: 0, XRP: 0, DOGE: 0 },
-        orders: { openOrders: [], orderHistory: [], tradeHistory: [] },
-        fundingHistory: [],
-        watchlist: ["BTC/USDT", "ETH/USDT", "SOL/USDT"],
-      });
+      setLoadError(error instanceof Error ? error.message : "Unable to load your account.");
     }
-  }, [user]);
+  }, [loaded, user, reloadKey]);
 
-  if (!loaded || !user || !accountState) {
-    return <main className="min-h-[45vh]" aria-busy="true" />;
+  const holdings = useMemo(() => {
+    if (!accountState) return [];
+    return Object.entries(accountState.assets)
+      .map(([symbol, amount]) => {
+        const market = markets.find((item) => item.symbol === symbol);
+        const price = symbol === "USDT" ? 1 : (market?.price ?? 0);
+        return {
+          symbol,
+          name: symbol === "USDT" ? "Tether" : (market?.name ?? symbol),
+          amount,
+          price,
+          change: market?.change24h ?? 0,
+          value: amount * price,
+          color: market?.color ?? "#00e887",
+        };
+      })
+      .filter((asset) => asset.amount > 0)
+      .sort((a, b) => b.value - a.value);
+  }, [accountState, markets]);
+
+  const activity = useMemo(() => {
+    if (!accountState) return [];
+    const funding = accountState.fundingHistory.map((entry, index) => ({
+      id: entry.id || `funding-${index}`,
+      title: "Funds added",
+      detail: `${entry.asset} · ${entry.method.replaceAll("-", " ")}`,
+      amount: entry.amount,
+      date: entry.createdAt,
+      kind: "funding" as const,
+    }));
+    const trades = accountState.orders.tradeHistory.flatMap((entry, index) => {
+      const record = toRecord(entry);
+      if (!record) return [];
+      const symbol = textFrom(record, ["pair", "symbol", "market"], "Spot market");
+      const side = textFrom(record, ["side", "type"], "Trade");
+      return [
+        {
+          id: textFrom(record, ["id"], `trade-${index}`),
+          title: `${side} ${symbol}`,
+          detail: "Paper trade",
+          amount: numberFrom(record, ["value", "notional", "total", "quoteQty"]),
+          date: textFrom(record, ["createdAt", "timestamp", "time", "date"], ""),
+          kind: "trade" as const,
+        },
+      ];
+    });
+    return [...funding, ...trades]
+      .sort((a, b) => dateValue(b.date) - dateValue(a.date))
+      .slice(0, 5);
+  }, [accountState]);
+
+  const openOrders = useMemo(() => {
+    if (!accountState) return [];
+    return accountState.orders.openOrders.flatMap((entry, index) => {
+      const record = toRecord(entry);
+      if (!record) return [];
+      return [
+        {
+          id: textFrom(record, ["id"], `order-${index}`),
+          pair: textFrom(record, ["pair", "symbol", "market"], "—"),
+          side: textFrom(record, ["side"], "—"),
+          type: textFrom(record, ["type", "orderType"], "Limit"),
+          price: numberFrom(record, ["price", "limitPrice"]),
+          amount: numberFrom(record, ["amount", "quantity", "qty", "origQty"]),
+          status: textFrom(record, ["status"], "Open"),
+        },
+      ];
+    });
+  }, [accountState]);
+
+  if (!loaded || !user || (!accountState && !loadError)) {
+    return (
+      <main className="mx-auto min-h-[55vh] max-w-7xl px-4 py-8 md:px-6" aria-busy="true">
+        <div className="shimmer h-8 w-48 rounded" />
+        <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {Array.from({ length: 4 }, (_, index) => (
+            <div key={index} className="shimmer h-28 rounded-md" />
+          ))}
+        </div>
+        <div className="shimmer mt-6 h-72 rounded-md" />
+      </main>
+    );
   }
 
-  const assetSymbols = ["BTC", "ETH", "SOL", "BNB", "XRP", "DOGE"] as const;
-  const holdings = assetSymbols.map((symbol) => {
-    const asset = markets.find((market) => market.symbol === symbol);
-    const price = asset?.price ?? 0;
-    const amount = accountState.assets[symbol];
-    return { symbol, amount, name: asset?.name ?? symbol, price, change: asset?.change24h ?? 0, value: amount * price };
-  });
-  const cashBalance = accountState.assets.USDT;
-  const totalBalance = accountState.portfolio.totalBalance;
-  const formatUsd = (value: number) =>
-    value.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-  const metrics = [
-    { label: "Available balance", value: formatUsd(accountState.portfolio.availableBalance), detail: `${cashBalance.toLocaleString()} USDT available` },
-    { label: "Unrealized PnL", value: formatUsd(accountState.portfolio.unrealizedPnL), detail: "Open simulated positions", positive: accountState.portfolio.unrealizedPnL >= 0 },
-    { label: "Realized PnL", value: formatUsd(accountState.portfolio.realizedPnL), detail: "Closed simulated trades", positive: accountState.portfolio.realizedPnL >= 0 },
-    { label: "Open orders", value: String(accountState.orders.openOrders.length), detail: "Currently active" },
-  ];
-  const sidebarItems = [
-    { label: "Overview", target: "overview", icon: LayoutDashboard },
-    { label: "Portfolio", target: "assets", icon: Wallet },
-    { label: "Deposit", target: "deposit", icon: ArrowDownToLine },
-    { label: "Open orders", target: "orders", icon: ListOrdered, count: accountState.orders.openOrders.length },
-    { label: "Activity", target: "activity", icon: Activity },
-    { label: "Watchlist", target: "watchlist", icon: Star, count: favorites.length },
-    { label: "Profile", target: "profile", icon: UserRound },
-  ];
-  const watchlist = favorites.map((symbol) => {
-    const pair = `${symbol}/USDT`;
-    const asset = markets.find((market) => market.symbol === symbol);
-    return { pair, symbol, price: asset?.price ?? 0, change: asset?.change24h ?? 0 };
-  }).filter(({ pair, symbol }) => `${pair} ${symbol}`.toLowerCase().includes(watchQuery.toLowerCase()));
-  const allocation = [...holdings.map(({ symbol, value }) => ({ symbol, value })), { symbol: "USDT", value: cashBalance }].filter((item) => item.value > 0);
-  const allocationTotal = allocation.reduce((total, item) => total + item.value, 0);
-  const tradeRecords = accountState.orders.tradeHistory.filter((row): row is HistoryRecord => !!row && typeof row === "object" && !Array.isArray(row));
-  const rangeStart = reportRange === "today" ? new Date(new Date().setHours(0, 0, 0, 0)) : reportRange === "7d" ? new Date(Date.now() - 7 * 86400000) : reportRange === "30d" ? new Date(Date.now() - 30 * 86400000) : null;
-  const reportTrades = tradeRecords.filter((record) => {
-    if (!rangeStart) return true;
-    const date = recordDate(record);
-    return date !== null && date >= rangeStart;
-  });
-  const reportPnls = reportTrades.map((record) => recordNumber(record, ["realizedPnL", "realizedPnl", "pnl", "profit"])).filter((value): value is number => value !== null);
-  const reportVolume = reportTrades.reduce((total, record) => total + (recordNumber(record, ["volume", "quoteQty", "notional", "value", "total"]) ?? 0), 0);
-  const reportFees = reportTrades.reduce((total, record) => total + (recordNumber(record, ["fee", "fees", "commission"]) ?? 0), 0);
-  const winningTrades = reportPnls.filter((value) => value > 0).length;
-  const reportBest = reportPnls.length ? Math.max(...reportPnls) : null;
-  const reportWorst = reportPnls.length ? Math.min(...reportPnls) : null;
-
-  return (
-    <>
-      <PageHeader title="Account Overview" desc="Your demo portfolio, orders and market activity." />
-      <main className="mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">
-        <div className="grid gap-7 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-9">
-          <aside className="min-w-0 lg:border-r lg:border-border lg:pr-6">
-            <div className="mb-5 hidden items-center gap-3 lg:flex">
-              <span className="grid size-10 shrink-0 place-items-center rounded-md border border-primary/20 bg-primary/10 text-sm font-black text-primary">
-                {user.name.slice(0, 1).toUpperCase()}
-              </span>
-              <div className="min-w-0">
-                <div className="truncate text-sm font-bold">{user.name}</div>
-                <div className="truncate text-xs text-dim">{user.email}</div>
-              </div>
-            </div>
-            <div className="mb-2 hidden px-3 text-[10px] font-bold tracking-[0.16em] text-dim lg:block">ACCOUNT MENU</div>
-            <nav aria-label="Dashboard sections" className="flex gap-1 overflow-x-auto pb-2 lg:grid lg:overflow-visible lg:pb-0">
-              {sidebarItems.map(({ label, target, icon: Icon, count }) => (
-                <a
-                  key={target}
-                  href={`#${target}`}
-                  onClick={() => setActiveSection(target)}
-                  aria-current={activeSection === target ? "location" : undefined}
-                  className={`flex shrink-0 items-center gap-2.5 rounded-md px-3 py-2.5 text-sm font-semibold transition hover:bg-elevated hover:text-foreground ${activeSection === target ? "bg-primary/[0.08] text-primary" : "text-muted-foreground"}`}
-                >
-                  <Icon size={16} className={`shrink-0 ${activeSection === target ? "text-primary" : "text-dim"}`} />
-                  <span>{label}</span>
-                  {count !== undefined && <span className="ml-auto text-xs text-dim">{count}</span>}
-                </a>
-              ))}
-            </nav>
-            <div className="mt-6 hidden border-t border-border pt-5 lg:block">
-              <div className="flex items-start gap-2 text-xs leading-5 text-muted-foreground">
-                <ShieldCheck size={15} className="mt-0.5 shrink-0 text-warning" />
-                <span>Demo account only. No real funds, deposits, or withdrawals.</span>
-              </div>
-              <SupportEntryButton className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground transition hover:text-primary">
-                <CircleHelp size={15} /> Get support
-              </SupportEntryButton>
-            </div>
-          </aside>
-
-          <div className="min-w-0 space-y-8">
-            <section id="overview" className="scroll-mt-24">
-              <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <div className="text-xs font-bold tracking-[0.16em] text-primary">DEMO ACCOUNT</div>
-                  <h2 className="mt-1 text-2xl font-black">Good to see you, {user.name.split(" ")[0]}</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">Portfolio and simulated exchange activity at a glance.</p>
-                </div>
-                <span className="inline-flex items-center gap-2 rounded border border-warning/25 bg-warning/[0.06] px-2.5 py-1.5 text-[10px] font-bold tracking-[0.12em] text-warning">
-                  <span className="size-1.5 rounded-full bg-warning" /> SIMULATED
-                </span>
-              </div>
-
-              <div className="border-y border-border bg-surface/60 px-5 py-5 sm:px-7 sm:py-6">
-                <div className="flex flex-wrap items-end justify-between gap-5">
-                  <div>
-                    <div className="text-xs font-semibold text-muted-foreground">Estimated portfolio value</div>
-                    <div className="num mt-2 text-4xl font-black tracking-tight sm:text-5xl">{formatUsd(totalBalance)}</div>
-                    <div className="mt-2 flex items-center gap-2 text-xs text-dim">
-                      <span className="inline-flex items-center gap-1 text-primary"><ArrowUpRight size={13} /> {formatUsd(accountState.portfolio.realizedPnL + accountState.portfolio.unrealizedPnL)}</span>
-                      <span>total simulated PnL</span>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Link to="/markets" className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2.5 text-xs font-bold transition hover:border-primary/40 hover:text-primary">
-                      Explore markets <ChevronRight size={14} />
-                    </Link>
-                    <Link to="/trade/$pair" params={{ pair: "BTC-USDT" }} className="inline-flex items-center gap-2 rounded-md bg-gradient-brand px-3 py-2.5 text-xs font-bold text-primary-foreground">
-                      Paper trade <ArrowUpRight size={14} />
-                    </Link>
-                  </div>
-                </div>
-              </div>
-
-              <section aria-label="Portfolio metrics" className="grid grid-cols-2 divide-x divide-y divide-border border-b border-border sm:grid-cols-4 sm:divide-y-0">
-                {metrics.map(({ label, value, detail, positive }) => (
-                  <div key={label} className="min-w-0 px-4 py-4 first:pl-0 sm:px-4">
-                    <div className="text-xs text-muted-foreground">{label}</div>
-                    <div className={`num mt-2 truncate text-lg font-bold ${positive ? "text-primary" : "text-foreground"}`}>{value}</div>
-                    <div className="mt-1 truncate text-[10px] text-dim">{detail}</div>
-                  </div>
-                ))}
-              </section>
-            </section>
-
-            <section id="deposit" className="scroll-mt-24 border-y border-border py-5">
-              <div className="mb-4 flex items-start justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <ArrowDownToLine size={17} className="text-primary" />
-                    <h2 className="text-lg font-bold">Add test balance</h2>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">Credit a local USDT balance to try the paper-trading interface.</p>
-                </div>
-                <span className="rounded border border-warning/25 bg-warning/[0.06] px-2 py-1 text-[9px] font-bold tracking-[0.1em] text-warning">LOCAL TEST ONLY</span>
-              </div>
-              <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
-                <div className="border border-border bg-surface/50 p-4">
-                  <div className="text-xs font-semibold text-muted-foreground">Available test balance</div>
-                  <div className="num mt-2 text-2xl font-black">{formatUsd(accountState.assets.USDT)}</div>
-                  <div className="mt-1 text-[10px] text-dim">USDT balance stored in this browser profile</div>
-                </div>
-                <div className="flex flex-col items-start justify-center gap-2">
-                  <p className="text-xs text-muted-foreground">Add a local test balance through the checkout preview.</p>
-                  <Link to="/checkout" className="inline-flex h-11 items-center gap-2 rounded-md bg-gradient-brand px-4 text-xs font-bold text-primary-foreground transition hover:brightness-110">
-                    <ArrowDownToLine size={15} /> Continue to checkout <ChevronRight size={14} />
-                  </Link>
-                </div>
-              </div>
-              <p className="mt-4 flex items-start gap-2 text-[11px] leading-5 text-warning">
-                <ShieldCheck size={14} className="mt-0.5 shrink-0" />
-                This is a local paper-trading credit, not a blockchain deposit. No funds are sent, received, or withdrawable.
-              </p>
-            </section>
-
-            <section id="assets" className="scroll-mt-24">
-              <div className="mb-4 flex items-end justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-bold">Portfolio assets</h2>
-                  <p className="mt-1 text-xs text-muted-foreground">Balances belong to this local demo profile.</p>
-                </div>
-                <a href="/markets" className="text-xs font-semibold text-primary hover:underline">All markets</a>
-              </div>
-              <div className="overflow-x-auto border-y border-border">
-                <table className="w-full min-w-[620px] text-left text-sm">
-                  <thead className="bg-surface text-[10px] font-bold tracking-[0.1em] text-muted-foreground">
-                    <tr>
-                      <th className="px-4 py-3 font-semibold">ASSET</th>
-                      <th className="px-4 py-3 text-right font-semibold">MARKET PRICE</th>
-                      <th className="px-4 py-3 text-right font-semibold">24H CHANGE</th>
-                      <th className="px-4 py-3 text-right font-semibold">BALANCE</th>
-                      <th className="px-4 py-3 text-right font-semibold">VALUE</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {holdings.map((holding) => (
-                      <tr key={holding.symbol} className="transition hover:bg-surface/60">
-                        <td className="px-4 py-3.5">
-                          <div className="font-bold">{holding.symbol}<span className="ml-2 text-xs font-normal text-dim">{holding.name}</span></div>
-                        </td>
-                        <td className="num px-4 py-3.5 text-right">{formatUsd(holding.price)}</td>
-                        <td className={`num px-4 py-3.5 text-right ${holding.change >= 0 ? "text-primary" : "text-destructive"}`}>{holding.change >= 0 ? "+" : ""}{holding.change.toFixed(2)}%</td>
-                        <td className="num px-4 py-3.5 text-right">{holding.amount} {holding.symbol}</td>
-                        <td className="num px-4 py-3.5 text-right font-semibold">{formatUsd(holding.value)}</td>
-                      </tr>
-                    ))}
-                    <tr className="transition hover:bg-surface/60">
-                      <td className="px-4 py-3.5 font-bold">USDT<span className="ml-2 text-xs font-normal text-dim">Tether</span></td>
-                      <td className="num px-4 py-3.5 text-right">$1.00</td>
-                      <td className="num px-4 py-3.5 text-right text-dim">0.00%</td>
-                      <td className="num px-4 py-3.5 text-right">{cashBalance.toLocaleString()} USDT</td>
-                      <td className="num px-4 py-3.5 text-right font-semibold">{formatUsd(cashBalance)}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </section>
-
-            <section className="space-y-4 border-y border-border py-5">
-              <div><h2 className="text-lg font-bold">Portfolio allocation</h2><p className="mt-1 text-xs text-muted-foreground">Calculated from this demo profile's current simulated balances.</p></div>
-              {allocation.length === 0 ? <p className="py-5 text-sm text-muted-foreground">No assets to allocate yet. Add test balance or complete a paper trade to see your portfolio mix.</p> : <div className="space-y-3">{allocation.map(({ symbol, value }) => <Link key={symbol} to="/trade/$pair" params={{ pair: `${symbol === "USDT" ? "BTC" : symbol}-USDT` }} className="grid grid-cols-[72px_minmax(0,1fr)_64px] items-center gap-3 text-sm"><span className="font-semibold">{symbol}</span><span className="h-2 overflow-hidden rounded-full bg-elevated"><span className="block h-full rounded-full bg-gradient-brand" style={{ width: `${Math.max(0, Math.min(100, value / allocationTotal * 100))}%` }} /></span><span className="num text-right text-muted-foreground">{(value / allocationTotal * 100).toFixed(1)}%</span></Link>)}</div>}
-            </section>
-
-            <section className="space-y-4 border-y border-border py-5">
-              <div className="flex flex-wrap items-end justify-between gap-3"><div><h2 className="text-lg font-bold">Trading report</h2><p className="mt-1 text-xs text-muted-foreground">Summary from recorded local trades only.</p></div><div className="flex flex-wrap gap-1" aria-label="Report date range">{([{ id: "today", label: "Today" }, { id: "7d", label: "7 Days" }, { id: "30d", label: "30 Days" }, { id: "all", label: "All Time" }] as const).map(({ id, label }) => <button key={id} onClick={() => setReportRange(id)} aria-pressed={reportRange === id} className={`rounded border px-2.5 py-1.5 text-[11px] font-semibold ${reportRange === id ? "border-primary/30 bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}>{label}</button>)}</div></div>
-              {reportTrades.length === 0 ? <div className="border-y border-border py-5"><p className="text-sm font-semibold">No trades in this date range.</p><p className="mt-1 text-xs text-muted-foreground">Your report will populate from completed paper trades.</p></div> : <div className="grid grid-cols-2 gap-4 border-y border-border py-4 sm:grid-cols-4"><div><span className="block text-[10px] text-dim">TOTAL VOLUME</span><span className="num text-sm font-bold">{reportVolume ? formatUsd(reportVolume) : "Not recorded"}</span></div><div><span className="block text-[10px] text-dim">TOTAL TRADES</span><span className="num text-sm font-bold">{reportTrades.length}</span></div><div><span className="block text-[10px] text-dim">REALIZED P&amp;L</span><span className="num text-sm font-bold">{reportPnls.length ? formatUsd(reportPnls.reduce((sum, value) => sum + value, 0)) : "Not recorded"}</span></div><div><span className="block text-[10px] text-dim">FEES</span><span className="num text-sm font-bold">{reportFees ? formatUsd(reportFees) : "Not recorded"}</span></div><div><span className="block text-[10px] text-dim">WIN RATE</span><span className="num text-sm font-bold">{reportPnls.length ? `${(winningTrades / reportPnls.length * 100).toFixed(1)}%` : "Not recorded"}</span></div><div><span className="block text-[10px] text-dim">BEST TRADE</span><span className="num text-sm font-bold">{reportBest === null ? "Not recorded" : formatUsd(reportBest)}</span></div><div><span className="block text-[10px] text-dim">WORST TRADE</span><span className="num text-sm font-bold">{reportWorst === null ? "Not recorded" : formatUsd(reportWorst)}</span></div><div><span className="block text-[10px] text-dim">RANGE</span><span className="text-sm font-bold">{reportRange === "all" ? "All Time" : reportRange === "today" ? "Today" : reportRange === "7d" ? "7 Days" : "30 Days"}</span></div></div>}
-              <div className="flex flex-wrap gap-2"><button onClick={() => exportCsv("trade-history", accountState.orders.tradeHistory)} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border px-3 text-xs font-bold transition hover:border-primary/35"><Download size={14} />Trade history CSV</button><button onClick={() => exportCsv("order-history", accountState.orders.orderHistory)} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border px-3 text-xs font-bold transition hover:border-primary/35"><FileSpreadsheet size={14} />Order history CSV</button><button onClick={() => exportCsv("transactions", accountState.fundingHistory)} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border px-3 text-xs font-bold transition hover:border-primary/35"><Download size={14} />Transactions CSV</button></div>
-            </section>
-
-            <section className="space-y-4 border-y border-border py-5">
-              <div><h2 className="text-lg font-bold">Trading statistics</h2><p className="mt-1 text-xs text-muted-foreground">Calculated from recorded local paper trades.</p></div>
-              {accountState.orders.tradeHistory.length === 0 ? <div className="border-y border-border py-5"><p className="text-sm font-semibold">No trading statistics yet.</p><p className="mt-1 text-xs text-muted-foreground">Complete your first paper trade to start building your statistics.</p></div> : <div className="grid grid-cols-2 gap-4 border-y border-border py-4 sm:grid-cols-4"><div><span className="block text-xs text-dim">Total Trades</span><span className="num text-lg font-bold">{accountState.orders.tradeHistory.length}</span></div><div><span className="block text-xs text-dim">Realized P&amp;L</span><span className="num text-lg font-bold">{formatUsd(accountState.portfolio.realizedPnL)}</span></div><div><span className="block text-xs text-dim">Total P&amp;L</span><span className="num text-lg font-bold">{formatUsd(accountState.portfolio.realizedPnL + accountState.portfolio.unrealizedPnL)}</span></div><div><span className="block text-xs text-dim">Win Rate</span><span className="num text-lg font-bold">Not available</span></div></div>}
-            </section>
-
-            <section className="panel p-4 sm:p-5"><PriceAlertsPanel /></section>
-
-            <div className="grid gap-8 xl:grid-cols-2">
-              <section id="watchlist" className="min-w-0 scroll-mt-24">
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-lg font-bold">Watchlist</h2>
-                    <p className="mt-1 text-xs text-muted-foreground">Your saved market pairs · {favorites.length}</p>
-                  </div>
-                  <Star size={16} className="text-warning" />
-                </div>
-                <label className="mb-2 flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-2"><Search size={14} className="text-dim" /><input value={watchQuery} onChange={(event) => setWatchQuery(event.target.value)} placeholder="Search favorites" className="min-w-0 flex-1 bg-transparent text-sm outline-none" /></label>
-                <div className="divide-y divide-border border-y border-border">
-                  {watchlist.map(({ pair, symbol, price, change }) => (
-                    <div key={pair} className="flex items-center gap-3 py-3 transition hover:bg-surface/50">
-                    <Link to="/trade/$pair" params={{ pair: `${symbol}-USDT` }} className="flex min-w-0 flex-1 items-center gap-3">
-                      <span className="grid size-8 shrink-0 place-items-center rounded-full border border-border bg-surface text-[10px] font-black">{symbol.slice(0, 1)}</span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-bold">{pair}</span>
-                        <span className="block text-[10px] text-dim">Simulated spot market</span>
-                      </span>
-                      <span className="text-right">
-                        <span className="num block text-sm font-semibold">{formatUsd(price)}</span>
-                        <span className={`num block text-[10px] ${change >= 0 ? "text-primary" : "text-destructive"}`}>{change >= 0 ? "+" : ""}{change.toFixed(2)}%</span>
-                      </span>
-                    </Link><button type="button" onClick={() => toggleFavorite(symbol)} aria-label={`Remove ${symbol} from favorites`} className="rounded border border-border p-2 text-dim transition hover:border-destructive/40 hover:text-destructive"><Trash2 size={14} /></button></div>
-                  ))}
-                  {watchlist.length === 0 && <p className="py-5 text-sm text-muted-foreground">{favorites.length === 0 ? "Your watchlist is empty. Add markets with the star control." : "No favorites match your search."}</p>}
-                </div>
-              </section>
-
-              <section id="activity" className="min-w-0 scroll-mt-24">
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-lg font-bold">Recent activity</h2>
-                    <p className="mt-1 text-xs text-muted-foreground">Trade history for this demo profile</p>
-                  </div>
-                  <Activity size={16} className="text-dim" />
-                </div>
-                <div className="divide-y divide-border border-y border-border">
-                  {accountState.orders.tradeHistory.length === 0 ? (
-                    <div className="flex items-center gap-3 py-5 text-sm text-muted-foreground">
-                      <span className="grid size-9 shrink-0 place-items-center rounded-md bg-surface text-dim"><ArrowDownLeft size={16} /></span>
-                      No simulated trades recorded yet.
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-3 py-5 text-sm text-muted-foreground">
-                      <span className="grid size-9 shrink-0 place-items-center rounded-md bg-surface text-primary"><ArrowUpRight size={16} /></span>
-                      {accountState.orders.tradeHistory.length} simulated trades recorded.
-                    </div>
-                  )}
-                </div>
-              </section>
-            </div>
-
-            <section id="orders" className="scroll-mt-24">
-              <div className="mb-4 flex items-end justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-bold">Open orders</h2>
-                  <p className="mt-1 text-xs text-muted-foreground">Active simulated limit orders</p>
-                </div>
-                <span className="text-xs text-dim">{accountState.orders.openOrders.length} active</span>
-              </div>
-              <div className="overflow-x-auto border-y border-border">
-                <table className="w-full min-w-[650px] text-left text-sm">
-                  <thead className="bg-surface text-[10px] font-bold tracking-[0.1em] text-muted-foreground">
-                    <tr>
-                      <th className="px-4 py-3 font-semibold">PAIR</th>
-                      <th className="px-4 py-3 font-semibold">SIDE / TYPE</th>
-                      <th className="px-4 py-3 text-right font-semibold">LIMIT PRICE</th>
-                      <th className="px-4 py-3 text-right font-semibold">FILLED / AMOUNT</th>
-                      <th className="px-4 py-3 text-right font-semibold">STATUS</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {accountState.orders.openOrders.length === 0 && (
-                      <tr>
-                        <td colSpan={5} className="px-4 py-6 text-center text-sm text-muted-foreground">
-                          <ClipboardList size={18} className="mx-auto mb-2 text-dim" />
-                          No open simulated orders.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-
-            <section id="profile" className="scroll-mt-24 border-y border-border py-5">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <span className="grid size-10 place-items-center rounded-md border border-border bg-surface"><UserRound size={18} className="text-muted-foreground" /></span>
-                  <div>
-                    <h2 className="text-sm font-bold">Demo profile</h2>
-                    <p className="mt-1 text-xs text-muted-foreground">{user.name} · {user.email}</p>
-                  </div>
-                </div>
-                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-warning"><ShieldCheck size={14} /> Local demo account</span>
-              </div>
-            </section>
-
-            <SupportEntryButton className="inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground transition hover:text-primary lg:hidden">
-              <Headset size={15} /> Customer Support
-            </SupportEntryButton>
-          </div>
+  if (loadError || !accountState) {
+    return (
+      <main className="mx-auto min-h-[55vh] max-w-7xl px-4 py-8 md:px-6">
+        <div role="alert" className="border border-destructive/30 bg-destructive/5 p-5 sm:p-6">
+          <h1 className="text-lg font-bold">Account data is unavailable</h1>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+            {loadError || "Your account data could not be loaded."}
+          </p>
+          <button
+            type="button"
+            onClick={() => setReloadKey((value) => value + 1)}
+            className="mt-4 rounded-sm border border-border px-3 py-2 text-sm font-semibold hover:bg-elevated"
+          >
+            Try again
+          </button>
         </div>
       </main>
-    </>
+    );
+  }
+
+  const formatUsd = (value: number) =>
+    value.toLocaleString("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  const displayUsd = (value: number) => (showBalances ? formatUsd(value) : "••••••");
+  const allocationTotal = holdings.reduce((sum, asset) => sum + asset.value, 0);
+  const liveUnrealizedPnL = Object.entries(accountState.positions ?? {}).reduce(
+    (total, [symbol, position]) => {
+      const markPrice =
+        markets.find((market) => market.symbol === symbol)?.price ?? position.averageEntryPrice;
+      return total + position.quantity * (markPrice - position.averageEntryPrice);
+    },
+    0,
   );
+  const formatAmount = (value: number) =>
+    value.toLocaleString("en-US", { maximumFractionDigits: 8 });
+
+  return (
+    <main className="mx-auto min-h-[65vh] max-w-7xl px-4 pb-12 pt-6 md:px-6 md:pt-9">
+      <header className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
+            <span className="size-1.5 rounded-full bg-primary" /> Account workspace
+          </div>
+          <h1 className="text-2xl font-bold sm:text-3xl">
+            Welcome back, {user.name.split(" ")[0]}
+          </h1>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            Your portfolio and account activity, all in one place.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 border border-warning/25 bg-warning/[0.06] px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-warning">
+            <ShieldCheck size={13} /> Demo account
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowBalances((visible) => !visible)}
+            aria-label={showBalances ? "Hide balances" : "Show balances"}
+            title={showBalances ? "Hide balances" : "Show balances"}
+            className="grid size-9 place-items-center border border-border text-muted-foreground transition hover:bg-elevated hover:text-foreground"
+          >
+            {showBalances ? <Eye size={16} /> : <EyeOff size={16} />}
+          </button>
+        </div>
+      </header>
+
+      <section
+        aria-label="Portfolio summary"
+        className="grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2 xl:grid-cols-4"
+      >
+        <div className="bg-card p-4 sm:p-5 xl:col-span-2">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs font-medium text-muted-foreground">Total portfolio value</span>
+            <Wallet size={16} className="text-primary" />
+          </div>
+          <div className="num mt-3 truncate text-3xl font-bold sm:text-4xl">
+            {displayUsd(allocationTotal)}
+          </div>
+          <p className="mt-2 text-xs text-dim">Estimated value across your demo account</p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Link
+              to="/checkout"
+              className="inline-flex min-h-10 items-center justify-center gap-2 bg-gradient-brand px-3.5 text-xs font-bold text-primary-foreground transition hover:brightness-110"
+            >
+              <ArrowDownToLine size={14} /> Add funds
+            </Link>
+            <Link
+              to="/trade/$pair"
+              params={{ pair: "BTC-USDT" }}
+              className="inline-flex min-h-10 items-center justify-center gap-2 border border-border px-3.5 text-xs font-bold transition hover:border-primary/40 hover:text-primary"
+            >
+              Trade <ArrowUpRight size={14} />
+            </Link>
+          </div>
+        </div>
+        <SummaryMetric
+          label="Available balance"
+          value={displayUsd(accountState.portfolio.availableBalance)}
+          note="Ready to use"
+          icon={Wallet}
+        />
+        <SummaryMetric
+          label="Unrealized P&L"
+          value={displayUsd(liveUnrealizedPnL)}
+          note="Open positions"
+          icon={liveUnrealizedPnL >= 0 ? TrendingUp : TrendingDown}
+          positive={liveUnrealizedPnL >= 0}
+        />
+      </section>
+
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <SummaryMetric
+          label="Realized P&L"
+          value={displayUsd(accountState.portfolio.realizedPnL)}
+          note="Closed trades"
+          icon={Activity}
+          positive={accountState.portfolio.realizedPnL >= 0}
+        />
+        <div className="flex min-h-[108px] items-center justify-between gap-4 border border-border bg-card px-4 py-4 sm:px-5">
+          <div className="min-w-0">
+            <div className="text-xs font-medium text-muted-foreground">Open orders</div>
+            <div className="num mt-2 text-xl font-bold">{openOrders.length}</div>
+            <div className="mt-1 text-[11px] text-dim">Currently active</div>
+          </div>
+          <div className="grid size-9 shrink-0 place-items-center border border-border bg-surface text-cyan">
+            <Clock3 size={16} />
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.85fr)]">
+        <section className="min-w-0 border border-border bg-card">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-4 sm:px-5">
+            <div>
+              <h2 className="text-sm font-bold">Your assets</h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Balances and live market valuations
+              </p>
+            </div>
+            <Link
+              to="/markets"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+            >
+              All markets <ArrowRight size={13} />
+            </Link>
+          </div>
+          <div className="hidden grid-cols-[minmax(0,1fr)_minmax(90px,0.7fr)_minmax(90px,0.7fr)_minmax(100px,0.8fr)] gap-3 border-b border-border bg-surface/70 px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-dim sm:grid sm:px-5">
+            <span>Asset</span>
+            <span className="text-right">Balance</span>
+            <span className="text-right">Price / 24h</span>
+            <span className="text-right">Value</span>
+          </div>
+          {holdings.length ? (
+            <div className="divide-y divide-border">
+              {holdings.map((asset) => (
+                <div
+                  key={asset.symbol}
+                  className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-4 py-3.5 transition hover:bg-surface/60 sm:grid-cols-[minmax(0,1fr)_minmax(90px,0.7fr)_minmax(90px,0.7fr)_minmax(100px,0.8fr)] sm:gap-3 sm:px-5"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span
+                      className="grid size-9 shrink-0 place-items-center rounded-full border border-border bg-surface text-[10px] font-black"
+                      style={{ color: asset.color }}
+                    >
+                      {asset.symbol.slice(0, 1)}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-bold">{asset.symbol}</span>
+                      <span className="block truncate text-[11px] text-dim">{asset.name}</span>
+                    </span>
+                  </div>
+                  <div className="num col-start-1 row-start-2 text-xs text-muted-foreground sm:col-auto sm:row-auto sm:text-right">
+                    {formatAmount(asset.amount)} {asset.symbol}
+                  </div>
+                  <div className="col-start-2 row-start-2 text-right sm:col-auto sm:row-auto">
+                    <div className="num text-[11px] text-muted-foreground">
+                      {formatUsd(asset.price)}
+                    </div>
+                    <div
+                      className={`num mt-0.5 text-[10px] ${asset.change >= 0 ? "text-primary" : "text-destructive"}`}
+                    >
+                      {asset.symbol === "USDT"
+                        ? "0.00%"
+                        : `${asset.change > 0 ? "+" : ""}${asset.change.toFixed(2)}%`}
+                    </div>
+                  </div>
+                  <div className="num col-start-2 row-start-1 text-right text-sm font-semibold sm:col-auto sm:row-auto">
+                    {displayUsd(asset.value)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="px-5 py-10 text-center">
+              <Wallet size={20} className="mx-auto text-dim" />
+              <p className="mt-3 text-sm font-semibold">No assets yet</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Add demo funds or place a paper trade to see balances here.
+              </p>
+            </div>
+          )}
+          <div className="flex items-center justify-between border-t border-border px-4 py-3 text-xs sm:px-5">
+            <span className="text-muted-foreground">Assets shown</span>
+            <span className="num font-semibold">{holdings.length}</span>
+          </div>
+        </section>
+
+        <div className="grid gap-6">
+          <section className="border border-border bg-card">
+            <div className="flex items-center justify-between border-b border-border px-4 py-4 sm:px-5">
+              <div>
+                <h2 className="text-sm font-bold">Asset allocation</h2>
+                <p className="mt-1 text-xs text-muted-foreground">By current market value</p>
+              </div>
+              <Wallet size={16} className="text-cyan" />
+            </div>
+            <div className="p-4 sm:p-5">
+              {allocationTotal > 0 ? (
+                <>
+                  <div
+                    className="flex h-2 overflow-hidden bg-elevated"
+                    aria-label="Asset allocation chart"
+                  >
+                    {holdings.map((asset) => (
+                      <span
+                        key={asset.symbol}
+                        style={{
+                          width: `${(asset.value / allocationTotal) * 100}%`,
+                          backgroundColor: asset.color,
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <div className="mt-4 space-y-3">
+                    {holdings.slice(0, 5).map((asset) => (
+                      <div key={asset.symbol} className="flex items-center gap-2.5 text-xs">
+                        <span
+                          className="size-2 shrink-0"
+                          style={{ backgroundColor: asset.color }}
+                        />
+                        <span className="min-w-0 flex-1 truncate font-medium">{asset.symbol}</span>
+                        <span className="num text-muted-foreground">
+                          {((asset.value / allocationTotal) * 100).toFixed(1)}%
+                        </span>
+                        <span className="num w-24 text-right font-semibold">
+                          {displayUsd(asset.value)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <p className="py-4 text-sm text-muted-foreground">
+                  Allocation will appear when your account has assets.
+                </p>
+              )}
+            </div>
+          </section>
+
+          <section className="border border-border bg-card">
+            <div className="flex items-center justify-between border-b border-border px-4 py-4 sm:px-5">
+              <div>
+                <h2 className="text-sm font-bold">Recent activity</h2>
+                <p className="mt-1 text-xs text-muted-foreground">Latest account movements</p>
+              </div>
+              <Activity size={16} className="text-primary" />
+            </div>
+            {activity.length ? (
+              <div className="divide-y divide-border">
+                {activity.map((item) => (
+                  <div key={item.id} className="flex items-center gap-3 px-4 py-3 sm:px-5">
+                    <span
+                      className={`grid size-8 shrink-0 place-items-center border ${item.kind === "funding" ? "border-primary/20 bg-primary/[0.06] text-primary" : "border-cyan/20 bg-cyan/[0.06] text-cyan"}`}
+                    >
+                      {item.kind === "funding" ? (
+                        <ArrowDownToLine size={14} />
+                      ) : (
+                        <ArrowUpRight size={14} />
+                      )}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-xs font-semibold">{item.title}</span>
+                      <span className="mt-1 block truncate text-[10px] capitalize text-dim">
+                        {item.detail} · {formatActivityDate(item.date)}
+                      </span>
+                    </span>
+                    <span className="num shrink-0 text-xs font-semibold">
+                      {item.amount === null ? "—" : displayUsd(item.amount)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="px-5 py-8 text-center text-sm text-muted-foreground">
+                No account activity yet.
+              </p>
+            )}
+          </section>
+        </div>
+      </div>
+
+      <section className="mt-6 border border-border bg-card">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-4 sm:px-5">
+          <div>
+            <h2 className="text-sm font-bold">Open orders</h2>
+            <p className="mt-1 text-xs text-muted-foreground">Your active simulated limit orders</p>
+          </div>
+          <span className="border border-border bg-surface px-2 py-1 text-[10px] font-semibold text-muted-foreground">
+            {openOrders.length} active
+          </span>
+        </div>
+        {openOrders.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[620px] text-left text-xs">
+              <thead className="bg-surface/70 text-[10px] uppercase tracking-wider text-dim">
+                <tr>
+                  <th className="px-4 py-3 font-semibold sm:px-5">Market</th>
+                  <th className="px-4 py-3 font-semibold">Side / type</th>
+                  <th className="px-4 py-3 text-right font-semibold">Price</th>
+                  <th className="px-4 py-3 text-right font-semibold">Amount</th>
+                  <th className="px-4 py-3 text-right font-semibold sm:px-5">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {openOrders.map((order) => (
+                  <tr key={order.id} className="hover:bg-surface/50">
+                    <td className="px-4 py-3.5 font-semibold sm:px-5">{order.pair}</td>
+                    <td className="px-4 py-3.5">
+                      <span
+                        className={
+                          order.side.toLowerCase() === "buy" ? "text-primary" : "text-destructive"
+                        }
+                      >
+                        {order.side}
+                      </span>
+                      <span className="text-muted-foreground"> · {order.type}</span>
+                    </td>
+                    <td className="num px-4 py-3.5 text-right">
+                      {order.price === null ? "—" : formatUsd(order.price)}
+                    </td>
+                    <td className="num px-4 py-3.5 text-right">
+                      {order.amount === null ? "—" : formatAmount(order.amount)}
+                    </td>
+                    <td className="px-4 py-3.5 text-right sm:px-5">
+                      <span className="border border-warning/20 bg-warning/[0.05] px-2 py-1 text-[10px] font-semibold text-warning">
+                        {order.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center px-5 py-9 text-center">
+            <Clock3 size={19} className="text-dim" />
+            <p className="mt-3 text-sm font-semibold">No open orders</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Orders you place will be listed here.
+            </p>
+            <Link
+              to="/markets"
+              className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+            >
+              Explore markets <ArrowRight size={13} />
+            </Link>
+          </div>
+        )}
+      </section>
+
+      <footer className="mt-5 flex flex-col gap-2 border-t border-border pt-4 text-[11px] text-dim sm:flex-row sm:items-center sm:justify-between">
+        <span className="inline-flex items-center gap-1.5">
+          <ShieldCheck size={13} className="text-warning" /> Demo environment. Balances and trades
+          are simulated.
+        </span>
+        <span>{user.email}</span>
+      </footer>
+    </main>
+  );
+}
+
+function SummaryMetric({
+  label,
+  value,
+  note,
+  icon: Icon,
+  positive,
+}: {
+  label: string;
+  value: string;
+  note: string;
+  icon: typeof Wallet;
+  positive?: boolean;
+}) {
+  return (
+    <div className="flex min-h-[108px] items-center justify-between gap-4 bg-card px-4 py-4 sm:px-5">
+      <div className="min-w-0">
+        <div className="text-xs font-medium text-muted-foreground">{label}</div>
+        <div
+          className={`num mt-2 truncate text-xl font-bold ${positive === undefined ? "text-foreground" : positive ? "text-primary" : "text-destructive"}`}
+        >
+          {value}
+        </div>
+        <div className="mt-1 text-[11px] text-dim">{note}</div>
+      </div>
+      <div className="grid size-9 shrink-0 place-items-center border border-border bg-surface text-muted-foreground">
+        <Icon size={16} />
+      </div>
+    </div>
+  );
+}
+
+type DataRecord = Record<string, unknown>;
+
+function toRecord(value: unknown): DataRecord | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as DataRecord) : null;
+}
+
+function textFrom(record: DataRecord, keys: string[], fallback: string) {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim()) return value;
+    if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  }
+  return fallback;
+}
+
+function numberFrom(record: DataRecord, keys: string[]) {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string" && value.trim() && Number.isFinite(Number(value)))
+      return Number(value);
+  }
+  return null;
+}
+
+function dateValue(value: string) {
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatActivityDate(value: string) {
+  const parsed = dateValue(value);
+  return parsed
+    ? new Date(parsed).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    : "Date unavailable";
 }

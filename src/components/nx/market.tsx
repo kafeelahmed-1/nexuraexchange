@@ -4,8 +4,13 @@ import { motion } from "framer-motion";
 import { Search, ArrowUpDown, Check, Loader2, Star, Flame, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { fmtPrice, fmtCompact, genCandles, stableRandom, useMarkets, useAsset, type Asset, type Candle } from "@/lib/market";
-import { useDemoUser } from "@/lib/demo-auth";
+import { fmtPrice, fmtCompact, genCandles, useAsset, useMarkets, type Asset, type Candle } from "@/lib/market";
+import {
+  executeSpotMarketOrder,
+  getDemoAccountState,
+  InsufficientBalanceError,
+  useDemoUser,
+} from "@/lib/demo-auth";
 import { AnimatedNumber, Skeleton, useFakeLoad } from "./motion";
 import { toggleFavorite, useLocalFeatures } from "@/lib/local-features";
 
@@ -242,8 +247,8 @@ export function OrderBook({ mid, base = "BTC", rows = 3, compact }: { mid: numbe
 function mkBook(mid: number, n: number) {
   const step = mid * 0.00003 + 0.0000001;
   return {
-    bids: Array.from({ length: n }, (_, i) => [mid - step * (i + 1) * 1.5, stableRandom(mid * 1e6 + i) * 2.2 + 0.2] as [number, number]),
-    asks: Array.from({ length: n }, (_, i) => [mid + step * (i + 1) * 1.5, stableRandom(mid * 1e6 + i + n) * 2.2 + 0.2] as [number, number]),
+    bids: Array.from({ length: n }, (_, i) => [mid - step * (i + 1) * 1.5, Math.random() * 2.2 + 0.2] as [number, number]),
+    asks: Array.from({ length: n }, (_, i) => [mid + step * (i + 1) * 1.5, Math.random() * 2.2 + 0.2] as [number, number]),
   };
 }
 
@@ -332,45 +337,213 @@ export function ActionButton({ label, variant, onDone, onClick }: { label: strin
 }
 
 export function TradingPanel({ symbol, price }: { symbol: string; price: number }) {
-  const [type, setType] = useState("Limit");
-  const [pct, setPct] = useState(25);
+  const [buyAmount, setBuyAmount] = useState("");
+  const [sellAmount, setSellAmount] = useState("");
+  const [buyPercent, setBuyPercent] = useState(0);
+  const [sellPercent, setSellPercent] = useState(0);
+  const [availableUsdt, setAvailableUsdt] = useState(0);
+  const [availableAsset, setAvailableAsset] = useState(0);
+  const [balanceLoaded, setBalanceLoaded] = useState(false);
+  const [orderError, setOrderError] = useState<{ side: "buy" | "sell"; message: string } | null>(null);
+  const [submitting, setSubmitting] = useState<"buy" | "sell" | null>(null);
   const navigate = useNavigate();
   const { user } = useDemoUser();
-  const openCheckout = () => {
-    if (user) {
-      void navigate({ to: "/checkout" });
+  const markets = useMarkets();
+  const marketPrices = Object.fromEntries(markets.map((market) => [market.symbol, market.price]));
+
+  useEffect(() => {
+    setBalanceLoaded(false);
+    if (!user) {
+      setAvailableUsdt(0);
+      setAvailableAsset(0);
+      setBalanceLoaded(true);
       return;
     }
-    void navigate({ to: "/login?next=%2Fcheckout" as never });
+    const refreshBalances = () => {
+      try {
+        const state = getDemoAccountState(user.id);
+        setAvailableUsdt(state.assets.USDT ?? 0);
+        setAvailableAsset(state.assets[symbol] ?? 0);
+        setOrderError(null);
+      } catch (error) {
+        setOrderError({
+          side: "buy",
+          message: error instanceof Error ? error.message : "Unable to load your account balance.",
+        });
+      } finally {
+        setBalanceLoaded(true);
+      }
+    };
+    refreshBalances();
+    window.addEventListener("nexora:demo-account-state-changed", refreshBalances);
+    window.addEventListener("storage", refreshBalances);
+    return () => {
+      window.removeEventListener("nexora:demo-account-state-changed", refreshBalances);
+      window.removeEventListener("storage", refreshBalances);
+    };
+  }, [user, symbol]);
+
+  const maxBuyAmount = price > 0 ? availableUsdt / price : 0;
+  const formatAmount = (amount: number) => Number.isFinite(amount) ? amount.toFixed(8).replace(/\.?0+$/, "") : "0";
+  const updatePercent = (side: "buy" | "sell", percent: number) => {
+    if (side === "buy") {
+      setBuyPercent(percent);
+      setBuyAmount(formatAmount(maxBuyAmount * percent / 100));
+    } else {
+      setSellPercent(percent);
+      setSellAmount(formatAmount(availableAsset * percent / 100));
+    }
   };
-  const field = (label: string, val: string, unit: string) => (
-    <label className="flex items-center rounded-md border border-border bg-surface px-3 py-2 text-sm transition focus-within:border-primary/50">
-      <span className="w-14 text-dim">{label}</span>
-      <input defaultValue={val} className="num min-w-0 flex-1 bg-transparent text-right outline-none" />
-      <span className="ml-2 text-xs text-dim">{unit}</span>
-    </label>
-  );
+
+  const submitOrder = (side: "buy" | "sell") => {
+    if (!user) {
+      const next = encodeURIComponent(`/trade/${symbol}-USDT`);
+      void navigate({ to: `/login?next=${next}` as never });
+      return;
+    }
+    const amount = Number(side === "buy" ? buyAmount : sellAmount);
+    setOrderError(null);
+    if (!Number.isFinite(amount) || amount <= 0 || !Number.isFinite(price) || price <= 0) {
+      setOrderError({ side, message: "Enter a valid order amount and try again." });
+      return;
+    }
+
+    setSubmitting(side);
+    try {
+      const result = executeSpotMarketOrder(user.id, symbol, side, amount, price, marketPrices);
+      setAvailableUsdt(result.state.assets.USDT ?? 0);
+      setAvailableAsset(result.state.assets[symbol] ?? 0);
+      if (side === "buy") {
+        setBuyAmount("");
+        setBuyPercent(0);
+      } else {
+        setSellAmount("");
+        setSellPercent(0);
+      }
+      const filledAmount = formatAmount(result.trade.quantity);
+      if (side === "sell") {
+        const pnl = result.trade.realizedPnL;
+        const amountText = `${pnl > 0 ? "+" : ""}${pnl.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 })}`;
+        const resultMessage = {
+          title: pnl > 0 ? "Trade closed in profit" : pnl < 0 ? "Trade closed at a loss" : "Trade closed at break-even",
+          description: `${filledAmount} ${symbol} sold · Realized P&L ${amountText}`,
+        };
+        if (pnl > 0) toast.success(resultMessage.title, { description: resultMessage.description });
+        else if (pnl < 0) toast.error(resultMessage.title, { description: resultMessage.description });
+        else toast.info(resultMessage.title, { description: resultMessage.description });
+      } else {
+        toast.success("Buy order filled", {
+          description: `${filledAmount} ${symbol} at ${fmtPrice(price)} USDT.`,
+        });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to place this order.";
+      setOrderError({ side, message });
+      if (!(error instanceof InsufficientBalanceError && error.asset === "USDT")) toast.error(message);
+    } finally {
+      setSubmitting(null);
+    }
+  };
+
+  const renderOrderForm = (side: "buy" | "sell") => {
+    const buying = side === "buy";
+    const amount = buying ? buyAmount : sellAmount;
+    const percent = buying ? buyPercent : sellPercent;
+    const maxAmount = buying ? maxBuyAmount : availableAsset;
+    const setAmount = buying ? setBuyAmount : setSellAmount;
+    const insufficientFunds = buying && Number(amount || 0) * price > availableUsdt + 1e-8;
+    const insufficientAsset = !buying && Number(amount || 0) > availableAsset + 1e-8;
+    const error = orderError?.side === side ? orderError.message : "";
+    return (
+      <section key={side} className="min-w-0 space-y-3 border border-border bg-surface/45 p-3 sm:p-4" aria-label={`${buying ? "Buy" : "Sell"} ${symbol}`}>
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-sm font-bold">{buying ? "Buy" : "Sell"} {symbol}</h3>
+          <span className="border border-warning/25 bg-warning/[0.06] px-2 py-1 text-[9px] font-bold tracking-wider text-warning">MARKET</span>
+        </div>
+        <div className="flex items-center justify-between gap-3 text-xs">
+          <span className="text-muted-foreground">Available</span>
+          <span className="num truncate text-right font-semibold">
+            {buying
+              ? `${availableUsdt.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT`
+              : `${formatAmount(availableAsset)} ${symbol}`}
+          </span>
+        </div>
+        <label className="block space-y-1.5 text-[11px] font-semibold text-muted-foreground">
+          Amount ({symbol})
+          <input
+            type="number"
+            min="0"
+            step="any"
+            inputMode="decimal"
+            value={amount}
+            onChange={(event) => {
+              setAmount(event.target.value);
+              if (buying) setBuyPercent(0);
+              else setSellPercent(0);
+              if (orderError?.side === side) setOrderError(null);
+            }}
+            placeholder="0.00"
+            aria-label={`${buying ? "Buy" : "Sell"} amount in ${symbol}`}
+            className="num h-11 w-full min-w-0 border border-input bg-background px-3 text-right text-sm text-foreground outline-none transition focus:border-primary/60 focus:ring-2 focus:ring-primary/15"
+          />
+        </label>
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="text-muted-foreground">{buying ? "Spend" : "Receive"} (est.)</span>
+          <span className="num font-semibold">{(Number(amount) || 0) > 0 ? (Number(amount) * price).toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }) : "$0.00"}</span>
+        </div>
+        <div>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            step="1"
+            value={percent}
+            onChange={(event) => updatePercent(side, Number(event.target.value))}
+            aria-label={`${buying ? "Buy" : "Sell"} percentage of available balance`}
+            className="w-full accent-[var(--primary)]"
+          />
+          <div className="flex justify-between text-[10px] text-dim"><span>0%</span><span>{percent}%</span><span>100%</span></div>
+        </div>
+        {(error || insufficientFunds || insufficientAsset) && (
+          <div role="alert" className="border border-warning/25 bg-warning/[0.05] p-2.5 text-[11px] leading-5 text-warning">
+            {error || (insufficientFunds ? "Not enough USDT for this order." : `You only have ${formatAmount(availableAsset)} ${symbol} available.`)}
+            {insufficientFunds && (
+              <Link to="/checkout" className="ml-1 inline-flex items-center font-bold underline underline-offset-2">Add funds</Link>
+            )}
+          </div>
+        )}
+        {!user ? (
+          <button type="button" onClick={() => submitOrder(side)} className="h-11 w-full bg-elevated text-sm font-bold transition hover:bg-accent">Log in to trade</button>
+        ) : !balanceLoaded ? (
+          <button type="button" disabled className="h-11 w-full bg-elevated text-sm font-bold opacity-60">Loading account…</button>
+        ) : buying && availableUsdt <= 0 ? (
+          <Link to="/checkout" className="flex h-11 w-full items-center justify-center bg-primary text-sm font-bold text-primary-foreground transition hover:brightness-110">Add funds to buy</Link>
+        ) : (
+          <button
+            type="button"
+            disabled={!balanceLoaded || submitting !== null || !amount || Number(amount) <= 0 || insufficientFunds || insufficientAsset}
+            onClick={() => submitOrder(side)}
+            className={`h-11 w-full text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-45 ${buying ? "bg-primary text-primary-foreground hover:brightness-110" : "bg-destructive text-destructive-foreground hover:brightness-110"}`}
+          >
+            {submitting === side ? "Submitting…" : `${buying ? "Buy" : "Sell"} ${symbol}`}
+          </button>
+        )}
+      </section>
+    );
+  };
+
   return (
     <div>
-      <div className="mb-3 flex gap-4 border-b border-border text-sm">
-        {["Limit", "Market", "Stop Limit"].map((t) => (
-          <button key={t} onClick={() => setType(t)} className={cn("relative pb-2 font-semibold", type === t ? "text-foreground" : "text-dim")}>
-            {t}{type === t && <motion.span layoutId="ot" className="absolute inset-x-0 -bottom-px h-0.5 bg-primary" />}
-          </button>
-        ))}
-        <span className="ml-auto self-center"><span className="rounded border border-warning/30 bg-warning/10 px-1.5 py-0.5 text-[10px] font-bold text-warning">PAPER</span></span>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
+        <div>
+          <h2 className="text-sm font-bold">Spot order</h2>
+          <p className="mt-1 text-[11px] text-muted-foreground">Market orders fill immediately at the current simulated price.</p>
+        </div>
+        <span className="border border-warning/25 bg-warning/[0.06] px-2 py-1 text-[9px] font-bold tracking-wider text-warning">PAPER TRADING</span>
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        {(["Buy", "Sell"] as const).map((side) => (
-          <div key={side} className="space-y-2">
-            {type === "Stop Limit" && field("Stop", fmtPrice(price * (side === "Buy" ? 1.01 : 0.99)).replace(/,/g, ""), "USDT")}
-            {type !== "Market" ? field("Price", fmtPrice(price).replace(/,/g, ""), "USDT") : <div className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-dim">Market price</div>}
-            {field("Amount", (pct / 100).toFixed(4), symbol)}
-            <input type="range" min={0} max={100} value={pct} onChange={(e) => setPct(+e.target.value)} className="w-full accent-[var(--primary)]" />
-            <div className="flex justify-between text-xs text-dim"><span>Avail. 10,000.00 USDT</span><span className="num">{pct}%</span></div>
-            <ActionButton label={`${side} ${symbol}`} variant={side === "Buy" ? "green" : "red"} onClick={openCheckout} />
-          </div>
-        ))}
+      <div className="grid min-w-0 gap-3 md:grid-cols-2">
+        {renderOrderForm("buy")}
+        {renderOrderForm("sell")}
       </div>
     </div>
   );

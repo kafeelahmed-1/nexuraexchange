@@ -137,15 +137,17 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const isBare = bare.includes(path);
+  const isAdminWorkspace = path === "/admin";
+  const showExchangeChrome = !isBare && !isAdminWorkspace;
   const isTerminal = path.startsWith("/trade") || path === "/futures";
   return (
     <QueryClientProvider client={queryClient}>
-      <PageLoader />
-      <CustomCursor />
-      <ScrollProgress />
-      {!isBare && <StatusBar />}
-      {!isBare && <MainNavbar />}
-      {!isBare && !isTerminal && <MarketTicker />}
+      {!isAdminWorkspace && <PageLoader />}
+      {!isAdminWorkspace && <CustomCursor />}
+      {!isAdminWorkspace && <ScrollProgress />}
+      {showExchangeChrome && <StatusBar />}
+      {showExchangeChrome && <MainNavbar />}
+      {showExchangeChrome && !isTerminal && <MarketTicker />}
       <AnimatePresence mode="wait">
         <motion.main
           key={path}
@@ -153,14 +155,14 @@ function RootComponent() {
           animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-          className={isBare ? "" : "pb-20 md:pb-0"}
+          className={showExchangeChrome ? "pb-20 md:pb-0" : ""}
         >
           <Outlet />
         </motion.main>
       </AnimatePresence>
-      {!isBare && !isTerminal && <Footer />}
-      {!isBare && <MobileNavbar />}
-      <CustomerSupportWidget />
+      {showExchangeChrome && !isTerminal && <Footer />}
+      {showExchangeChrome && <MobileNavbar />}
+      {showExchangeChrome && <CustomerSupportWidget />}
       <Toaster
         position="bottom-right"
         theme="dark"

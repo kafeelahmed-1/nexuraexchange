@@ -12,7 +12,6 @@ import {
   Gift,
   LogIn,
   LogOut,
-  Megaphone,
   Send,
   Mail,
   ShieldCheck,
@@ -21,10 +20,10 @@ import {
   BellRing,
   CheckCheck,
   CircleDollarSign,
+  TrendingUp,
   Command,
   Search,
   Shield,
-  TrendingUp,
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -57,35 +56,32 @@ export function Logo({ className }: { className?: string }) {
           strokeLinejoin="round"
         />
       </svg>
-      <span className="text-lg font-black tracking-tight">
-        BR
-        <span className="ml-1 text-xs font-bold tracking-[0.2em] text-muted-foreground">
-          TRADES
-        </span>
+      <span className="text-lg font-black tracking-tight text-foreground">
+        BR TRADES
       </span>
     </Link>
   );
 }
 
 export function StatusBar() {
+  const [t, setT] = useState("");
+  useEffect(() => {
+    const f = () => setT(new Date().toUTCString().slice(17, 25));
+    f();
+    const i = setInterval(f, 1000);
+    return () => clearInterval(i);
+  }, []);
   return (
     <div className="hidden border-b border-border bg-surface text-[11px] text-dim md:block">
-      <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-6 px-6 py-1.5">
-        <div className="flex min-w-0 items-center gap-4">
-          <span className="flex shrink-0 items-center gap-1.5 font-semibold text-primary">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-1.5">
+        <div className="flex items-center gap-4">
+          <span className="flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
-            Matching Engine: 99.99% Operational
+            Simulated engine operational
           </span>
-          <span className="hidden h-4 w-px bg-border sm:block" />
-          <span className="hidden min-w-0 items-center gap-2 truncate sm:flex">
-            <Megaphone size={13} className="shrink-0 text-primary" />
-            Zero-Fee Maker Promotion is now active across all major pairs!
-          </span>
+          <span className="num">UTC {t}</span>
         </div>
-        <div className="flex shrink-0 items-center gap-6">
-          <span className="hidden sm:inline">24h Vol: <strong className="num text-foreground">$2,489,120,400</strong></span>
-          <span>Reserves: <strong className="text-primary">100% Backed</strong></span>
-        </div>
+        <span className="text-warning">Simulated data · Paper trading only</span>
       </div>
     </div>
   );
@@ -430,7 +426,7 @@ export function PageLoader() {
             <Logo className="pointer-events-none scale-150" />
           </motion.div>
           <div className="relative mt-10 text-sm font-semibold text-muted-foreground">
-            Initializing Trading Interface
+            BR Trades Powered by Black Rocks.
           </div>
           <div className="relative mt-4 h-[2px] w-64 overflow-hidden rounded-full bg-elevated">
             <motion.div
@@ -477,41 +473,20 @@ export function CustomCursor() {
       ry = -100,
       raf = 0,
       mode = "";
-    const getBackgroundTone = (el: HTMLElement | null): "light" | "dark" | null => {
-      let node: HTMLElement | null = el;
-      while (node) {
-        const bg = window.getComputedStyle(node).backgroundColor;
-        if (bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") {
-          const match = bg.match(/\d+(?:\.\d+)?/g);
-          if (match && match.length >= 3) {
-            const [r, g, b] = match.slice(0, 3).map(Number);
-            const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-            return luminance > 0.72 ? "light" : "dark";
-          }
-        }
-        node = node.parentElement;
-      }
-      return null;
-    };
     const move = (e: MouseEvent) => {
       mx = e.clientX;
       my = e.clientY;
-      const nativeTarget = e.target as HTMLElement;
-      const hovered = (nativeTarget.closest("[data-cursor], a, button, input, img") as HTMLElement | null) ?? nativeTarget;
-      mode = hovered
-        ? hovered.dataset["cursor"] ||
-          (hovered.tagName === "A"
+      const t = (e.target as HTMLElement).closest("[data-cursor], a, button, input, img");
+      mode = t
+        ? (t as HTMLElement).dataset["cursor"] ||
+          (t.tagName === "A"
             ? "link"
-            : hovered.tagName === "BUTTON"
+            : t.tagName === "BUTTON"
               ? "button"
-              : hovered.tagName === "IMG"
+              : t.tagName === "IMG"
                 ? "img"
                 : "")
         : "";
-      if (ring.current) {
-        const tone = getBackgroundTone(hovered);
-        ring.current.style.borderColor = tone === "light" ? "rgba(15, 23, 42, 0.7)" : mode ? "var(--primary)" : "color-mix(in oklab, var(--cyan) 50%, transparent)";
-      }
     };
     const loop = () => {
       rx += (mx - rx) * 0.28;
@@ -524,6 +499,9 @@ export function CustomCursor() {
           mode === "card"
             ? "0 0 24px color-mix(in oklab, var(--primary) 40%, transparent)"
             : "none";
+        ring.current.style.borderColor = mode
+          ? "var(--primary)"
+          : "color-mix(in oklab, var(--cyan) 50%, transparent)";
       }
       raf = requestAnimationFrame(loop);
     };

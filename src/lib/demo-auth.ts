@@ -29,7 +29,8 @@ export interface DemoAccountState {
     unrealizedPnL: number;
     realizedPnL: number;
   };
-  assets: Record<"USDT" | "BTC" | "ETH" | "SOL" | "BNB" | "XRP" | "DOGE", number>;
+  assets: Record<string, number>;
+  positions?: Record<string, { quantity: number; averageEntryPrice: number }>;
   orders: {
     openOrders: unknown[];
     orderHistory: unknown[];
@@ -50,6 +51,7 @@ const usersKey = "nexora.demoUsers";
 const sessionKey = "nexora.activeDemoSession";
 const accountStateKey = "nexora.demoAccountState";
 const sessionChangedEvent = "nexora:demo-session-changed";
+const accountStateChangedEvent = "nexora:demo-account-state-changed";
 const passwordIterations = 120_000;
 const adminEmail = "admin@gmail.com";
 const adminPassword = "admin123";
@@ -59,7 +61,7 @@ export function normalizeEmail(email: string) {
 }
 
 export function isAdminUser(user: DemoProfile | null | undefined) {
-  return Boolean(user && (user.role === "admin" || user.accountType === "admin" || user.email === adminEmail));
+  return Boolean(user && (user.role === "admin" || user.accountType === "admin"));
 }
 
 function readJson<T>(key: string, fallback: T): T {
@@ -88,7 +90,7 @@ async function hashPassword(password: string, salt: Uint8Array) {
   if (!crypto.subtle) throw new Error("This browser cannot create a local demo account.");
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
   const bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", hash: "SHA-256", salt, iterations: passwordIterations },
+    { name: "PBKDF2", hash: "SHA-256", salt: new Uint8Array(salt), iterations: passwordIterations },
     key,
     256,
   );
@@ -100,6 +102,7 @@ function initialAccountState(userId: string): DemoAccountState {
     userId,
     portfolio: { totalBalance: 0, availableBalance: 0, unrealizedPnL: 0, realizedPnL: 0 },
     assets: { USDT: 0, BTC: 0, ETH: 0, SOL: 0, BNB: 0, XRP: 0, DOGE: 0 },
+    positions: {},
     orders: { openOrders: [], orderHistory: [], tradeHistory: [] },
     fundingHistory: [],
     watchlist: ["BTC/USDT", "ETH/USDT", "SOL/USDT"],
@@ -109,7 +112,13 @@ function initialAccountState(userId: string): DemoAccountState {
 export async function ensureDefaultAdmin() {
   const users = readJson<StoredDemoUser[]>(usersKey, []);
   const adminUser = users.find((entry) => entry.profile.email === adminEmail);
-  if (adminUser) return adminUser.profile;
+  if (adminUser) {
+    const profile = { ...adminUser.profile, accountType: "admin" as const, role: "admin" as const };
+    if (adminUser.profile.accountType !== "admin" || adminUser.profile.role !== "admin") {
+      writeJson(usersKey, users.map((entry) => entry.profile.id === profile.id ? { ...entry, profile } : entry));
+    }
+    return profile;
+  }
 
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const profile: DemoProfile = {
@@ -144,6 +153,9 @@ export async function ensureDefaultAdmin() {
 
 export async function registerDemoUser(name: string, email: string, password: string) {
   const normalizedEmail = normalizeEmail(email);
+  if (normalizedEmail === adminEmail) {
+    throw new Error("This email is reserved for the administrator account.");
+  }
   const users = readJson<StoredDemoUser[]>(usersKey, []);
   if (!Array.isArray(users)) throw new Error("Saved demo accounts are unreadable. Clear this site's local storage to start over.");
   if (users.some((user) => user.profile.email === normalizedEmail)) {
@@ -209,7 +221,7 @@ export function getActiveDemoUser(): DemoProfile | null {
   const session = readJson<DemoSession | null>(sessionKey, null);
   if (!session || typeof session.userId !== "string") return null;
   const users = getAllDemoUsers();
-  return users.find((user) => user.id === session.userId) ?? null;
+  return users.find((user) => user.id === session.userId && !user.suspended) ?? null;
 }
 
 export function getDemoAccountState(userId: string): DemoAccountState {
@@ -233,7 +245,11 @@ export function getDemoAccountState(userId: string): DemoAccountState {
   ) {
     throw new Error("Saved demo portfolio is unreadable. Clear this site's local storage to start over.");
   }
-  return { ...state, fundingHistory: state.fundingHistory ?? [] };
+  const positions = state.positions ?? {};
+  if (!positions || typeof positions !== "object" || Array.isArray(positions)) {
+    throw new Error("Saved demo positions are unreadable. Clear this site's local storage to start over.");
+  }
+  return { ...state, positions, fundingHistory: state.fundingHistory ?? [] };
 }
 
 export function saveDemoAccountState(state: DemoAccountState) {
@@ -242,6 +258,117 @@ export function saveDemoAccountState(state: DemoAccountState) {
     throw new Error("Saved demo portfolio is unreadable. Clear this site's local storage to start over.");
   }
   writeJson(accountStateKey, { ...states, [state.userId]: state });
+  window.dispatchEvent(new Event(accountStateChangedEvent));
+}
+
+export class InsufficientBalanceError extends Error {
+  constructor(
+    public readonly asset: string,
+    public readonly available: number,
+    public readonly required: number,
+  ) {
+    super(`Insufficient ${asset} balance. Add funds or reduce the order amount.`);
+    this.name = "InsufficientBalanceError";
+  }
+}
+
+export function executeSpotMarketOrder(
+  userId: string,
+  symbol: string,
+  side: "buy" | "sell",
+  quantity: number,
+  price: number,
+  marketPrices: Record<string, number>,
+) {
+  const asset = symbol.trim().toUpperCase();
+  if (!/^[A-Z0-9]{2,12}$/.test(asset) || asset === "USDT") throw new Error("Choose a valid USDT market.");
+  if (!Number.isFinite(quantity) || quantity <= 0) throw new Error("Enter an amount greater than zero.");
+  if (!Number.isFinite(price) || price <= 0) throw new Error("The market price is unavailable. Try again.");
+
+  const state = getDemoAccountState(userId);
+  const currentQuantity = Number(state.assets[asset] ?? 0);
+  const currentCash = Number(state.assets["USDT"] ?? 0);
+  const tradeQuantity = Math.round(quantity * 1e8) / 1e8;
+  if (tradeQuantity <= 0) throw new Error("Order amount is too small.");
+  const notional = tradeQuantity * price;
+  const nextAssets = { ...state.assets };
+  const positions = { ...(state.positions ?? {}) };
+  const currentPosition = positions[asset];
+  const averageEntryPrice = currentPosition?.averageEntryPrice ?? price;
+  let realizedPnL = 0;
+  let filledQuantity = tradeQuantity;
+
+  if (side === "buy") {
+    if (notional > currentCash + 1e-8) {
+      throw new InsufficientBalanceError("USDT", currentCash, notional);
+    }
+    const nextQuantity = currentQuantity + tradeQuantity;
+    positions[asset] = {
+      quantity: nextQuantity,
+      averageEntryPrice: (currentQuantity * averageEntryPrice + tradeQuantity * price) / nextQuantity,
+    };
+    nextAssets["USDT"] = Math.max(0, currentCash - notional);
+    nextAssets[asset] = nextQuantity;
+  } else {
+    if (tradeQuantity > currentQuantity + 1e-8) {
+      throw new InsufficientBalanceError(asset, currentQuantity, tradeQuantity);
+    }
+    const soldQuantity = Math.min(tradeQuantity, currentQuantity);
+    filledQuantity = soldQuantity;
+    realizedPnL = (price - averageEntryPrice) * soldQuantity;
+    const remaining = Math.max(0, currentQuantity - soldQuantity);
+    nextAssets["USDT"] = currentCash + soldQuantity * price;
+    nextAssets[asset] = remaining;
+    if (remaining <= 1e-8) {
+      delete positions[asset];
+      nextAssets[asset] = 0;
+    } else {
+      positions[asset] = { quantity: remaining, averageEntryPrice };
+    }
+  }
+
+  const unrealizedPnL = Object.entries(positions).reduce((total, [positionSymbol, position]) => {
+    const markPrice = marketPrices[positionSymbol] ?? position.averageEntryPrice;
+    return total + position.quantity * (markPrice - position.averageEntryPrice);
+  }, 0);
+  const totalBalance = Object.entries(nextAssets).reduce((total, [balanceSymbol, balance]) => {
+    const markPrice = balanceSymbol === "USDT" ? 1 : marketPrices[balanceSymbol] ?? positions[balanceSymbol]?.averageEntryPrice ?? 0;
+    return total + balance * markPrice;
+  }, 0);
+  const createdAt = new Date().toISOString();
+  const trade = {
+    id: crypto.randomUUID(),
+    symbol: asset,
+    pair: `${asset}/USDT`,
+    side,
+    type: "Market",
+    quantity: filledQuantity,
+    price,
+    value: filledQuantity * price,
+    realizedPnL,
+    fee: 0,
+    status: "Filled",
+    createdAt,
+  };
+  const updated: DemoAccountState = {
+    ...state,
+    assets: nextAssets,
+    positions,
+    portfolio: {
+      ...state.portfolio,
+      totalBalance,
+      availableBalance: nextAssets["USDT"],
+      realizedPnL: state.portfolio.realizedPnL + realizedPnL,
+      unrealizedPnL,
+    },
+    orders: {
+      ...state.orders,
+      orderHistory: [trade, ...state.orders.orderHistory],
+      tradeHistory: [trade, ...state.orders.tradeHistory],
+    },
+  };
+  saveDemoAccountState(updated);
+  return { state: updated, trade };
 }
 
 export function logoutDemoUser() {
@@ -255,6 +382,7 @@ export async function updateDemoUserProfile(userId: string, changes: Partial<Pic
   if (index === -1) throw new Error("User not found.");
 
   const current = users[index];
+  if (!current) throw new Error("User not found.");
   const nextEmail = normalizeEmail(changes.email ?? current.profile.email);
   if (users.some((entry) => entry.profile.id !== userId && entry.profile.email === nextEmail)) {
     throw new Error("An account with this email already exists.");
@@ -272,7 +400,9 @@ export async function updateDemoUserProfile(userId: string, changes: Partial<Pic
   if (changes.password) {
     const salt = crypto.getRandomValues(new Uint8Array(16));
     const passwordHash = await hashPassword(changes.password, salt);
-    nextUsers[index] = { ...nextUsers[index], passwordSalt: bytesToHex(salt), passwordHash };
+    const updatedUser = nextUsers[index];
+    if (!updatedUser) throw new Error("User not found.");
+    nextUsers[index] = { ...updatedUser, passwordSalt: bytesToHex(salt), passwordHash };
   }
 
   writeJson(usersKey, nextUsers);
@@ -284,12 +414,17 @@ export function toggleDemoUserSuspension(userId: string) {
   const users = readJson<StoredDemoUser[]>(usersKey, []);
   const target = users.find((entry) => entry.profile.id === userId);
   if (!target) throw new Error("User not found.");
+  const suspended = !(target.profile.suspended ?? false);
   const updated = users.map((entry) =>
     entry.profile.id === userId
-      ? { ...entry, profile: { ...entry.profile, suspended: !(entry.profile.suspended ?? false) } }
+      ? { ...entry, profile: { ...entry.profile, suspended } }
       : entry,
   );
   writeJson(usersKey, updated);
+  if (suspended) {
+    const session = readJson<DemoSession | null>(sessionKey, null);
+    if (session?.userId === userId) window.localStorage.removeItem(sessionKey);
+  }
   notifySessionChanged();
   return updated.find((entry) => entry.profile.id === userId)?.profile ?? null;
 }
@@ -318,29 +453,49 @@ export async function createDemoUserByAdmin(name: string, email: string, passwor
 export function applyTradeManualPnl(userId: string, tradeId: string, pnl: number) {
   const states = readJson<Record<string, DemoAccountState>>(accountStateKey, {});
   const state = states[userId];
-  if (!state) return null;
+  if (!state) throw new Error("User account data could not be found.");
+  if (!Number.isFinite(pnl)) throw new Error("Enter a valid P&L amount.");
+
+  const currentTrade = state.orders.tradeHistory.find((entry) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return false;
+    return (entry as Record<string, unknown>)["id"] === tradeId;
+  });
+  if (!currentTrade || typeof currentTrade !== "object" || Array.isArray(currentTrade)) {
+    throw new Error("The selected trade could not be found.");
+  }
+  const currentRecord = currentTrade as Record<string, unknown>;
+  const previousPnl = Number(currentRecord["manualPnl"] ?? currentRecord["realizedPnL"] ?? currentRecord["pnl"] ?? 0);
+  if (!Number.isFinite(previousPnl)) throw new Error("The selected trade has invalid P&L data.");
+  const pnlDelta = pnl - previousPnl;
+  const nextUsdt = Number(state.assets["USDT"] ?? 0) + pnlDelta;
+  if (nextUsdt < -1e-8) throw new Error("This loss would make the user's available USDT balance negative.");
 
   const tradeHistory = state.orders.tradeHistory.map((entry) => {
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) return entry;
     const record = entry as Record<string, unknown>;
-    if (record.id !== tradeId) return entry;
+    if (record["id"] !== tradeId) return entry;
     return { ...record, manualPnl: Number(pnl), pnl: Number(pnl), adjustedByAdmin: true, updatedAt: new Date().toISOString() };
+  });
+  const orderHistory = state.orders.orderHistory.map((entry) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return entry;
+    const record = entry as Record<string, unknown>;
+    return record["id"] === tradeId
+      ? { ...record, manualPnl: Number(pnl), pnl: Number(pnl), realizedPnL: Number(pnl), adjustedByAdmin: true, updatedAt: new Date().toISOString() }
+      : entry;
   });
 
   const nextState: DemoAccountState = {
     ...state,
-    orders: { ...state.orders, tradeHistory },
+    assets: { ...state.assets, USDT: Math.max(0, nextUsdt) },
+    orders: { ...state.orders, tradeHistory, orderHistory },
     portfolio: {
       ...state.portfolio,
-      realizedPnL: tradeHistory.reduce((total, entry) => {
-        if (!entry || typeof entry !== "object" || Array.isArray(entry)) return total;
-        const record = entry as Record<string, unknown>;
-        const value = record.manualPnl ?? record.realizedPnL ?? record.pnl ?? 0;
-        return total + Number(value || 0);
-      }, 0),
+      totalBalance: state.portfolio.totalBalance + pnlDelta,
+      availableBalance: Math.max(0, nextUsdt),
+      realizedPnL: state.portfolio.realizedPnL + pnlDelta,
     },
   };
-  writeJson(accountStateKey, { ...states, [userId]: nextState });
+  saveDemoAccountState(nextState);
   return nextState;
 }
 
@@ -348,20 +503,35 @@ export function adjustBalance(userId: string, changes: Partial<DemoAccountState[
   const states = readJson<Record<string, DemoAccountState>>(accountStateKey, {});
   const current = states[userId] ?? initialAccountState(userId);
   const { deltaUSDT = 0, ...portfolioChanges } = changes;
+  const hasAvailableBalance = portfolioChanges.availableBalance !== undefined;
+  const hasTotalBalance = portfolioChanges.totalBalance !== undefined;
+  const availableBalance = hasAvailableBalance
+    ? Number(portfolioChanges.availableBalance)
+    : hasTotalBalance
+      ? current.portfolio.availableBalance + Number(portfolioChanges.totalBalance) - current.portfolio.totalBalance
+      : current.portfolio.availableBalance + deltaUSDT;
+  const balanceDelta = availableBalance - current.portfolio.availableBalance;
+  const totalBalance = hasTotalBalance
+    ? Number(portfolioChanges.totalBalance)
+    : current.portfolio.totalBalance + balanceDelta;
+  if (!Number.isFinite(availableBalance) || availableBalance < 0 || !Number.isFinite(totalBalance) || totalBalance < 0) {
+    throw new Error("Account balances must be valid, non-negative amounts.");
+  }
+  const { availableBalance: _availableBalance, totalBalance: _totalBalance, ...otherPortfolioChanges } = portfolioChanges;
   const next: DemoAccountState = {
     ...current,
     portfolio: {
       ...current.portfolio,
-      ...portfolioChanges,
-      availableBalance: Number(current.portfolio.availableBalance + deltaUSDT),
+      ...otherPortfolioChanges,
+      availableBalance,
+      totalBalance,
     },
     assets: {
       ...current.assets,
-      USDT: Number(portfolioChanges.availableBalance ?? (current.assets.USDT ?? 0) + deltaUSDT),
+      USDT: availableBalance,
     },
   };
-  next.portfolio.totalBalance = Number(next.portfolio.availableBalance + next.portfolio.unrealizedPnL + next.portfolio.realizedPnL);
-  writeJson(accountStateKey, { ...states, [userId]: next });
+  saveDemoAccountState(next);
   return next;
 }
 
