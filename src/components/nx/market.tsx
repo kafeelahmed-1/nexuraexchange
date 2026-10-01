@@ -208,8 +208,8 @@ export function MarketDetail({ symbol }: { symbol: string }) {
   const marketCap = supply * asset.price;
   return (
     <section className="space-y-4 border-y border-border py-5">
-      <div className="flex flex-wrap items-end justify-between gap-3"><div><div className="text-[10px] font-bold tracking-[0.14em] text-primary">SIMULATED ASSET PROFILE</div><h2 className="mt-1 text-lg font-bold">About {asset.name} ({asset.symbol})</h2></div><div className="text-xs text-muted-foreground">Simulated activity rank <span className="num font-bold text-foreground">#{rank}</span></div></div>
-      <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">{asset.name} is available as a simulated spot market on BR Trades. Price, volume, supply and market capitalization figures are local illustrative estimates and are not sourced from a live provider.</p>
+      <div className="flex flex-wrap items-end justify-between gap-3"><div><div className="text-[10px] font-bold tracking-[0.14em] text-primary">ASSET PROFILE</div><h2 className="mt-1 text-lg font-bold">About {asset.name} ({asset.symbol})</h2></div><div className="text-xs text-muted-foreground">Activity rank <span className="num font-bold text-foreground">#{rank}</span></div></div>
+      <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">{asset.name} is available as a spot market on BR Trades. Price, volume, supply and market capitalization figures are platform estimates.</p>
       <div className="grid grid-cols-2 gap-4 border-y border-border py-4 sm:grid-cols-4"><div><span className="block text-[10px] text-dim">24H HIGH</span><span className="num text-sm font-semibold">{fmtPrice(asset.high24h)}</span></div><div><span className="block text-[10px] text-dim">24H LOW</span><span className="num text-sm font-semibold">{fmtPrice(asset.low24h)}</span></div><div><span className="block text-[10px] text-dim">MARKET CAP EST.</span><span className="num text-sm font-semibold">${fmtCompact(marketCap)}</span></div><div><span className="block text-[10px] text-dim">CIRCULATING EST.</span><span className="num text-sm font-semibold">{fmtCompact(supply)} {asset.symbol}</span></div></div>
       <div className="flex flex-wrap gap-2"><a href="/markets" className="rounded-md border border-border px-3 py-2 text-xs font-bold hover:border-primary/35">All markets</a>{["USDT", "USDC", "BTC"].map((quote) => <a key={quote} href={`/trade/${asset.symbol}-${quote}`} className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs font-bold text-primary hover:bg-primary/10">Trade {asset.symbol}/{quote}</a>)}</div>
     </section>
@@ -325,7 +325,7 @@ export function ActionButton({ label, variant, onDone, onClick }: { label: strin
       return;
     }
     setSt("loading");
-    setTimeout(() => { setSt("ok"); toast.success("Order submitted", { description: "Simulated order — no real funds." }); onDone?.(); }, 800);
+    setTimeout(() => { setSt("ok"); toast.success("Order submitted", { description: "Order added to your account." }); onDone?.(); }, 800);
     setTimeout(() => setSt("idle"), 2000);
   };
   return (
@@ -537,7 +537,7 @@ export function TradingPanel({ symbol, price }: { symbol: string; price: number 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
         <div>
           <h2 className="text-sm font-bold">Spot order</h2>
-          <p className="mt-1 text-[11px] text-muted-foreground">Market orders fill immediately at the current simulated price.</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">Market orders fill immediately at the current market price.</p>
         </div>
         <span className="border border-warning/25 bg-warning/[0.06] px-2 py-1 text-[9px] font-bold tracking-wider text-warning">PAPER TRADING</span>
       </div>

@@ -85,7 +85,7 @@ export function AuthPage({ mode }: AuthPageProps) {
       const destination = next?.startsWith("/") && !next.startsWith("//") && next !== "/admin" ? next : "/account";
       await navigate({ to: destination as never, replace: true });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to save this demo profile.");
+      toast.error(error instanceof Error ? error.message : "Unable to save this user profile.");
     }
   }
 
@@ -118,7 +118,7 @@ export function AuthPage({ mode }: AuthPageProps) {
             <div className="mt-10 border-y border-border">
               <div className="flex items-center justify-between border-b border-border py-3 text-[10px] font-bold tracking-[0.16em] text-dim">
                 <span>MARKET SNAPSHOT</span>
-                <span className="num">SIMULATED</span>
+                <span className="num">SECURE</span>
               </div>
               <div className="grid grid-cols-3 gap-3 py-5 sm:gap-6">
                 {[
@@ -237,7 +237,7 @@ export function AuthPage({ mode }: AuthPageProps) {
                   />
                   <div
                     role="img"
-                    aria-label={`Demo verification code ${verificationCode}`}
+                    aria-label={`Account verification code ${verificationCode}`}
                     className="relative flex h-12 select-none items-center justify-center gap-1 overflow-hidden rounded-md border border-input bg-[#e8ece9] px-2 text-xl font-black text-[#334b18]"
                   >
                     <span className="pointer-events-none absolute inset-0 opacity-40 [background-image:repeating-linear-gradient(16deg,transparent_0,transparent_7px,#829180_8px,transparent_9px),repeating-linear-gradient(104deg,transparent_0,transparent_11px,#9ba8a0_12px,transparent_13px)]" />

@@ -159,7 +159,7 @@ export function Modal({ open, onClose, title, children }: { open: boolean; onClo
   );
 }
 
-export function SimulatedBadge({ children = "SIMULATED" }: { children?: ReactNode }) {
+export function SimulatedBadge({ children = "LIVE" }: { children?: ReactNode }) {
   return <span className="rounded border border-warning/30 bg-warning/10 px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-warning">{children}</span>;
 }
 

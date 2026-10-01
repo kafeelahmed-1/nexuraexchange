@@ -1,13 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { HeroSection, StatStrip, MarketScanner, Ecosystem, Verification, SecuritySection, OnboardingSteps, DeviceSection, NewsSection, FAQAccordion, CustomerServiceSection } from "@/components/nx/home";
+import { HeroSection, StatStrip, MarketScanner, Ecosystem, Verification, SecuritySection, OnboardingSteps, DeviceSection, TestimonialsSection, NewsSection, FAQAccordion, CustomerServiceSection } from "@/components/nx/home";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "BR TRADES — Institutional-Grade Crypto Exchange" },
-      { name: "description", content: "Explore 300+ simulated crypto markets with paper spot and 100x futures trading on a premium institutional interface." },
+      { name: "description", content: "Explore 300+ crypto markets with paper spot and 100x futures trading on a premium institutional interface." },
       { property: "og:title", content: "BR TRADES — Institutional-Grade Crypto Exchange" },
-      { property: "og:description", content: "Premium dark trading terminal with simulated markets and paper trading." },
+      { property: "og:description", content: "Premium dark trading terminal with market data and paper trading." },
     ],
   }),
   component: Index,
@@ -24,6 +24,7 @@ function Index() {
       <SecuritySection />
       <OnboardingSteps />
       <DeviceSection />
+      <TestimonialsSection />
       <NewsSection />
       <FAQAccordion />
       <CustomerServiceSection />

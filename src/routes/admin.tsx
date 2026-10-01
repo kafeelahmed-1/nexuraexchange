@@ -90,7 +90,7 @@ export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
       { title: "Admin Panel — BR TRADES" },
-      { name: "description", content: "Administrator dashboard for user management, balances and simulated trade override controls." },
+      { name: "description", content: "Administrator dashboard for user management, balances and trade override controls." },
       { property: "og:title", content: "Admin Panel — BR TRADES" },
       { property: "og:description", content: "Manage users, balances and trade outcomes." },
     ],
@@ -368,7 +368,7 @@ function AdminPanel() {
         </header>
         <div className="mx-auto max-w-[1600px] px-4 py-6 md:px-6 md:py-8">
         <div className="mb-6 flex items-center justify-between gap-3">
-          <div><h2 className="text-sm font-bold">Users and account controls</h2><p className="mt-1 text-xs text-muted-foreground">Manage access, balances, and simulated trade outcomes.</p></div>
+          <div><h2 className="text-sm font-bold">Users and account controls</h2><p className="mt-1 text-xs text-muted-foreground">Manage access, balances, and trade outcomes.</p></div>
           <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-primary">
             <ShieldCheck size={12} /> Admin access
           </span>

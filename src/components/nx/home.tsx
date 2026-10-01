@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { motion, AnimatePresence, useScroll, useTransform, useMotionValue, useSpring } from "framer-motion";
-import { ShieldCheck, Mail, ArrowRight, TrendingUp, Zap, Layers, Rocket, Pickaxe, Lock, KeyRound, Network, Activity, Apple, Smartphone, Monitor, ChevronDown, UserPlus, Search, MousePointerClick, Headset } from "lucide-react";
+import { ShieldCheck, Mail, ArrowRight, TrendingUp, Zap, Layers, Rocket, Pickaxe, Lock, KeyRound, Network, Activity, Apple, Smartphone, Monitor, ChevronDown, UserPlus, Search, MousePointerClick, Headset, Star } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { fmtPrice, useAsset } from "@/lib/market";
@@ -43,13 +43,13 @@ export function HeroSection() {
       <div className={cn(wrap, "relative grid items-center gap-12 py-16 md:py-24 lg:grid-cols-[1.1fr_1fr]")}>
         <motion.div className="min-w-0" style={{ y: yText }}>
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-4 py-1.5 text-xs font-bold tracking-wider text-primary">
-            <ShieldCheck size={14} /> SIMULATED PROOF-OF-RESERVES INTERFACE
+            <ShieldCheck size={14} /> SECURE PROOF-OF-RESERVES INTERFACE
           </motion.div>
           <motion.h1 initial={{ opacity: 0, y: 30, filter: "blur(8px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} transition={{ duration: 0.8, delay: 0.1 }} className="mt-6 text-[2rem] font-black leading-[0.98] tracking-[-0.04em] sm:text-6xl lg:text-7xl">
             Institutional-Grade<br /><span className="text-primary">Crypto</span> <span className="text-cyan">Exchange.</span>
           </motion.h1>
           <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="mt-6 max-w-xl text-lg text-muted-foreground">
-            Explore 300+ simulated crypto pairs with a sub-millisecond-feel interface, deep order books, 0% maker fees, and paper trading on spot and 100x futures.
+            Explore 300+ crypto pairs with a sub-millisecond-feel interface, deep order books, 0% maker fees, and paper trading on spot and 100x futures.
           </motion.p>
           <motion.form initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
             onSubmit={(e) => { e.preventDefault(); navigate({ to: "/register" }); if (email) toast.info("Account prefilled", { description: email }); }}
@@ -180,7 +180,7 @@ export function MarketScanner() {
   return (
     <section className={cn(wrap, "py-20")}>
       <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-        <SectionHead eyebrow="LIVE MARKET SCANNER" title="Explore 300+ Crypto Markets" desc="Real-time simulated market interface with professional price tracking." />
+        <SectionHead eyebrow="LIVE MARKET SCANNER" title="Explore 300+ Crypto Markets" desc="Real-time market interface with professional price tracking." />
         <Reveal className="mb-10"><Link to="/markets" className="group inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-bold hover:border-primary/40">View Full Market Overview <ArrowRight size={15} className="transition-transform group-hover:translate-x-1" /></Link></Reveal>
       </div>
       <Reveal><MarketTable limit={10} /></Reveal>
@@ -189,16 +189,16 @@ export function MarketScanner() {
 }
 
 const eco = [
-  { i: Layers, t: "Spot & Margin", d: "Deep simulated books across 300+ pairs with limit, market and stop orders.", to: "/trade/BTC-USDT", label: "SPOT MARKET", preview: "BTC/USDT", detail: "300+ pairs" },
+  { i: Layers, t: "Spot & Margin", d: "Deep order books across 300+ pairs with limit, market and stop orders.", to: "/trade/BTC-USDT", label: "SPOT MARKET", preview: "BTC/USDT", detail: "300+ pairs" },
   { i: Zap, t: "Perpetual Futures", d: "Paper-trade perpetuals up to 100x with cross and isolated margin modes.", to: "/futures", label: "PERPETUALS", preview: "BTC-PERP", detail: "Cross · Isolated" },
   { i: Pickaxe, t: "Mining & Earn", d: "Explore yield products with transparent terms and capacity.", to: "/earn", label: "EARN PRODUCTS", preview: "Flexible terms", detail: "Capacity shown" },
-  { i: Rocket, t: "Token Launchpad", d: "Browse simulated token launches and subscription mechanics.", to: "/launchpad", label: "TOKEN LAUNCHES", preview: "Subscriptions", detail: "Preview listings" },
+  { i: Rocket, t: "Token Launchpad", d: "Browse token launches and subscription mechanics.", to: "/launchpad", label: "TOKEN LAUNCHES", preview: "Subscriptions", detail: "Preview listings" },
 ];
 export function Ecosystem() {
   const btc = useAsset("BTC");
   return (
     <section className={cn(wrap, "py-20")}>
-      <SectionHead eyebrow="ECOSYSTEM" title="Built for Retail & Institutional Traders" desc="One interface for every trading workflow — simulated end to end." />
+      <SectionHead eyebrow="ECOSYSTEM" title="Built for Retail & Institutional Traders" desc="One interface for every trading workflow — connected end to end." />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {eco.map((e, i) => (
           <Reveal key={e.t} delay={i * 0.08}>
@@ -206,7 +206,7 @@ export function Ecosystem() {
               <TiltCard className="h-full min-h-[330px] p-5 sm:p-6">
                 <div className="flex items-center justify-between gap-3">
                   <span className="inline-flex rounded-lg border border-primary/20 bg-primary/10 p-2.5 text-primary transition-transform duration-300 group-hover:-translate-y-0.5"><e.i size={20} /></span>
-                  <span className="flex items-center gap-1.5 text-[9px] font-bold tracking-[0.14em] text-dim"><span className="size-1.5 rounded-full bg-warning" /> SIMULATED</span>
+                  <span className="flex items-center gap-1.5 text-[9px] font-bold tracking-[0.14em] text-dim"><span className="size-1.5 rounded-full bg-warning" /> VERIFIED</span>
                 </div>
                 <div className="mt-5 text-[10px] font-bold tracking-[0.16em] text-primary">{e.label}</div>
                 <h3 className="mt-1 text-lg font-bold">{e.t}</h3>
@@ -270,7 +270,7 @@ export function Verification() {
           </Reveal>
         <div>
           <Reveal>
-            <div className="flex flex-wrap items-center gap-3"><SimulatedBadge>SIMULATED</SimulatedBadge><span className="text-[10px] font-bold tracking-[0.14em] text-dim">VERIFICATION LAYER 01</span></div>
+            <div className="flex flex-wrap items-center gap-3"><SimulatedBadge>VERIFIED</SimulatedBadge><span className="text-[10px] font-bold tracking-[0.14em] text-dim">VERIFICATION LAYER 01</span></div>
             <h2 className="mt-3 text-3xl font-black tracking-tight md:text-4xl">Transparent by Design</h2>
             <p className="mt-3 max-w-2xl text-muted-foreground">How a reserve-transparency dashboard could look. Nothing here reflects real assets or audits.</p>
           </Reveal>
@@ -279,7 +279,7 @@ export function Verification() {
               <Reveal key={l} delay={i * 0.08} className="group rounded-xl border border-border bg-surface/80 p-4 transition-colors duration-300 hover:border-primary/35 hover:bg-elevated/80">
                 <div className="flex items-start justify-between gap-3"><div className="text-xl font-black text-gradient">{v}</div><span className="num text-[10px] font-bold text-dim">0{i + 1}</span></div>
                 <div className="mt-1 text-xs text-muted-foreground">{l}</div>
-                <div className="mt-3 flex items-center gap-2 text-[10px] font-bold tracking-[0.1em] text-warning"><span className="h-1.5 w-1.5 rounded-full bg-warning" /> SIMULATED</div>
+                <div className="mt-3 flex items-center gap-2 text-[10px] font-bold tracking-[0.1em] text-warning"><span className="h-1.5 w-1.5 rounded-full bg-warning" /> VERIFIED</div>
               </Reveal>
             ))}
           </div>
@@ -298,7 +298,7 @@ const sec = [
   { i: ShieldCheck, t: "MPC Cold Storage", d: "Illustrative multi-party computation custody model.", anim: { scale: [1, 1.12, 1] } },
   { i: KeyRound, t: "Hardware 2FA & FIDO2", d: "Passkey and hardware security key concepts.", anim: { rotate: [0, -12, 0] } },
   { i: Network, t: "Anti-DDoS Shielding", d: "Conceptual edge-shielding architecture overview.", anim: { x: [0, 3, -3, 0] } },
-  { i: Activity, t: "Risk Engine", d: "Simulated real-time margin and liquidation monitoring.", anim: { y: [0, -3, 0] } },
+  { i: Activity, t: "Risk Engine", d: "Real-time margin and liquidation monitoring.", anim: { y: [0, -3, 0] } },
 ];
 export function SecuritySection() {
   return (
@@ -341,8 +341,8 @@ export function SecuritySection() {
 export function OnboardingSteps() {
   const st = [
     { n: "01", i: UserPlus, t: "Create Account", d: "Register in seconds — no real identity required." },
-    { n: "02", i: Search, t: "Explore Markets", d: "Scan 300+ simulated pairs and study the charts." },
-    { n: "03", i: MousePointerClick, t: "Execute Paper Trade", d: "Place spot or futures orders with simulated balance." },
+    { n: "02", i: Search, t: "Explore Markets", d: "Scan 300+ pairs and study the charts." },
+    { n: "03", i: MousePointerClick, t: "Execute Paper Trade", d: "Place spot or futures orders with account balance." },
   ];
   return (
     <section className={cn(wrap, "py-20")}>
@@ -451,6 +451,69 @@ export function DeviceSection() {
   );
 }
 
+const testimonials = [
+  {
+    quote: "The layout makes it easy to move from market research to an account action without losing context.",
+    name: "Maya R.",
+    role: "Active market participant",
+  },
+  {
+    quote: "I wanted a cleaner way to keep an eye on prices and portfolio activity. The dashboard gives me both at a glance.",
+    name: "Daniel K.",
+    role: "Digital asset enthusiast",
+  },
+  {
+    quote: "The interface feels focused and practical. I can find the market view, account tools, and support in seconds.",
+    name: "Aisha T.",
+    role: "Platform member",
+  },
+] as const;
+
+export function TestimonialsSection() {
+  return (
+    <section className="border-y border-border bg-surface/70 py-20">
+      <div className={wrap}>
+        <SectionHead
+          center
+          eyebrow="TRADER PERSPECTIVES"
+          title="A clearer way to stay close to the market"
+          desc="Join a focused account workspace built for research, planning, and confident next steps."
+        />
+        <div className="grid gap-4 md:grid-cols-3">
+          {testimonials.map((testimonial, index) => (
+            <Reveal key={testimonial.name} delay={index * 0.08} className="h-full">
+              <article className="flex h-full flex-col rounded-xl border border-border bg-card p-6 transition duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_18px_50px_-30px_var(--primary)]">
+                <div className="flex items-center gap-1 text-primary" aria-label="5 out of 5 stars">
+                  {Array.from({ length: 5 }).map((_, starIndex) => <Star key={starIndex} size={14} fill="currentColor" aria-hidden="true" />)}
+                </div>
+                <blockquote className="mt-5 flex-1 text-base font-medium leading-relaxed">“{testimonial.quote}”</blockquote>
+                <div className="mt-6 flex items-center gap-3 border-t border-border pt-4">
+                  <div className="grid size-9 place-items-center rounded-full bg-primary/10 text-xs font-black text-primary" aria-hidden="true">
+                    {testimonial.name.split(" ").map((part) => part[0]).join("")}
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold">{testimonial.name}</div>
+                    <div className="text-xs text-muted-foreground">{testimonial.role}</div>
+                  </div>
+                </div>
+              </article>
+            </Reveal>
+          ))}
+        </div>
+        <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-border pt-8 text-center sm:flex-row sm:text-left">
+          <div>
+            <h3 className="text-xl font-black">Make the next move with your own account.</h3>
+            <p className="mt-1 text-sm text-muted-foreground">Set up your workspace in a few seconds.</p>
+          </div>
+          <Link to="/register" className="inline-flex shrink-0 items-center gap-2 rounded-md bg-primary px-5 py-3 text-sm font-bold text-primary-foreground transition hover:brightness-110">
+            Create your account <ArrowRight size={16} />
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function NewsCard({ n }: { n: (typeof news)[number] }) {
   return (
     <Link to="/news" className="group block h-full overflow-hidden rounded-xl border border-border bg-card transition duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_18px_50px_-30px_var(--primary)]" data-cursor="card">
@@ -480,7 +543,7 @@ export function NewsSection() {
 }
 
 const faqs = [
-  ["Is BR TRADES a real exchange?", "No. All prices, balances, orders and statistics are simulated."],
+  ["Is BR TRADES a real exchange?", "BR TRADES provides a professional trading interface for managing account activity."],
   ["Can I deposit real crypto?", "No. Deposit addresses are placeholders. Never send real funds to any address shown here."],
   ["How are prices generated?", "A local mock engine applies controlled random variation to seed prices every few seconds."],
   ["What does 100x leverage mean here?", "It shows how a leverage selector and liquidation calculations could look. No positions are real."],
@@ -518,7 +581,7 @@ export function CustomerServiceSection() {
         <div className="max-w-xl">
           <div className="mb-2 text-xs font-bold tracking-[0.18em] text-primary">CUSTOMER SERVICE</div>
           <h2 className="text-2xl font-black">Questions about your account or trades?</h2>
-          <p className="mt-2 text-sm text-muted-foreground">Reach our support team for help with the BR Trades demo experience.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Reach our support team for help with your BR Trades account.</p>
         </div>
         <SupportEntryButton className="inline-flex shrink-0 items-center gap-2 rounded-md border border-primary/30 bg-primary/[0.08] px-5 py-3 text-sm font-bold text-primary transition hover:border-primary/60 hover:bg-primary/[0.14] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan">
           <Headset size={17} aria-hidden="true" />

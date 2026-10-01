@@ -5,11 +5,11 @@ export const Route = createFileRoute("/earn")({
   head: () => ({
     meta: [
       { title: "Mining & Earn — BR TRADES" },
-      { name: "description", content: "Yield products with simulated APY, duration and capacity." },
+      { name: "description", content: "Yield products with APY, duration and capacity." },
       { property: "og:title", content: "Mining & Earn — BR TRADES" },
       {
         property: "og:description",
-        content: "Yield products with simulated APY, duration and capacity.",
+        content: "Yield products with APY, duration and capacity.",
       },
     ],
   }),

@@ -21,10 +21,10 @@ export function SupportEntryButton({
 }
 
 const quickHelp = [
-  "Trading Demo",
-  "Account Demo",
-  "Deposit Demo",
-  "Withdrawal Demo",
+  "Trading",
+  "Account",
+  "Deposits",
+  "Withdrawals",
   "Security",
   "General Question",
 ];
@@ -222,7 +222,7 @@ export function CustomerSupportWidget() {
                     <button
                       key={category}
                       type="button"
-                      onClick={() => selectHelp(category.replace(" Demo", " demo"))}
+                      onClick={() => selectHelp(category)}
                       className="min-h-10 rounded-md border border-white/[0.09] px-2.5 py-2 text-xs font-semibold text-muted-foreground transition hover:border-primary/30 hover:bg-primary/[0.05] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
                     >
                       {category}

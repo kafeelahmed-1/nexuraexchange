@@ -199,7 +199,7 @@ function AccountOverview() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-1.5 border border-warning/25 bg-warning/[0.06] px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-warning">
-            <ShieldCheck size={13} /> Demo account
+            <ShieldCheck size={13} /> User account
           </span>
           <button
             type="button"
@@ -225,7 +225,7 @@ function AccountOverview() {
           <div className="num mt-3 truncate text-3xl font-bold sm:text-4xl">
             {displayUsd(allocationTotal)}
           </div>
-          <p className="mt-2 text-xs text-dim">Estimated value across your demo account</p>
+          <p className="mt-2 text-xs text-dim">Estimated value across your user account</p>
           <div className="mt-5 flex flex-wrap gap-2">
             <Link
               to="/checkout"
@@ -344,7 +344,7 @@ function AccountOverview() {
               <Wallet size={20} className="mx-auto text-dim" />
               <p className="mt-3 text-sm font-semibold">No assets yet</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Add demo funds or place a paper trade to see balances here.
+                Add funds or place a paper trade to see balances here.
               </p>
             </div>
           )}
@@ -452,7 +452,7 @@ function AccountOverview() {
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-4 sm:px-5">
           <div>
             <h2 className="text-sm font-bold">Open orders</h2>
-            <p className="mt-1 text-xs text-muted-foreground">Your active simulated limit orders</p>
+            <p className="mt-1 text-xs text-muted-foreground">Your active limit orders</p>
           </div>
           <span className="border border-border bg-surface px-2 py-1 text-[10px] font-semibold text-muted-foreground">
             {openOrders.length} active
@@ -519,8 +519,8 @@ function AccountOverview() {
 
       <footer className="mt-5 flex flex-col gap-2 border-t border-border pt-4 text-[11px] text-dim sm:flex-row sm:items-center sm:justify-between">
         <span className="inline-flex items-center gap-1.5">
-          <ShieldCheck size={13} className="text-warning" /> Demo environment. Balances and trades
-          are simulated.
+          <ShieldCheck size={13} className="text-warning" /> User environment. Balances and trades
+          are recorded securely.
         </span>
         <span>{user.email}</span>
       </footer>

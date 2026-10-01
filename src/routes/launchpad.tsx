@@ -5,11 +5,11 @@ export const Route = createFileRoute("/launchpad")({
   head: () => ({
     meta: [
       { title: "Token Launchpad — BR TRADES" },
-      { name: "description", content: "Simulated token launches and subscription mechanics." },
+      { name: "description", content: "Token launches and subscription mechanics." },
       { property: "og:title", content: "Token Launchpad — BR TRADES" },
       {
         property: "og:description",
-        content: "Simulated token launches and subscription mechanics.",
+        content: "Token launches and subscription mechanics.",
       },
     ],
   }),

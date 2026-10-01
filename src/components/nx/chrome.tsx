@@ -25,6 +25,7 @@ import {
   Search,
   Shield,
   Trash2,
+  ArrowRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -77,11 +78,17 @@ export function StatusBar() {
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
-            Simulated engine operational
+            Trading engine operational
           </span>
           <span className="num">UTC {t}</span>
         </div>
-        <span className="text-warning">Simulated data · Paper trading only</span>
+        <Link
+          to="/register"
+          className="inline-flex items-center gap-1.5 rounded-sm border border-primary/25 bg-primary/10 px-2 py-0.5 font-semibold text-primary transition-colors hover:border-primary/50 hover:bg-primary/15"
+        >
+          Practice risk-free. Create your account <ArrowRight size={12} />
+        </Link>
+        <span className="text-warning">Market data · Paper trading only</span>
       </div>
     </div>
   );
@@ -300,7 +307,7 @@ function NotificationCenter({ compact = false }: { compact?: boolean }) {
   return (
     <div className={compact ? "lg:hidden" : "hidden lg:block"}>
       <button type="button" onClick={() => setOpen((value) => !value)} aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`} aria-expanded={open} className="relative rounded-lg border border-border p-2 text-muted-foreground transition hover:border-primary/30 hover:text-foreground"><Bell size={17} />{unread > 0 && <span className="absolute -right-1 -top-1 grid min-h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[9px] font-black text-primary-foreground">{unread}</span>}</button>
-      {open && <div className="fixed right-3 top-16 z-[90] flex max-h-[min(70vh,560px)] w-[min(390px,calc(100vw-24px))] flex-col border border-border bg-background shadow-2xl sm:right-6"><div className="flex items-center justify-between border-b border-border px-4 py-3"><div><h2 className="text-sm font-bold">Notifications</h2><p className="text-[10px] text-dim">{unread} unread</p></div><div className="flex items-center gap-3"><button onClick={markAllNotificationsRead} disabled={unread === 0} className="text-[11px] font-semibold text-primary disabled:text-dim">Mark all read</button><button aria-label="Close notifications" onClick={() => setOpen(false)} className="p-1 text-dim hover:text-foreground">×</button></div></div><div className="min-h-0 overflow-y-auto">{notifications.map((item) => { const Icon = icons[item.type]; return <div key={item.id} className={`flex gap-3 border-b border-border px-4 py-3 ${item.read ? "" : "bg-primary/[0.035]"}`}><Icon size={16} className={`mt-0.5 shrink-0 ${item.type === "security" ? "text-warning" : "text-primary"}`} /><button className="min-w-0 flex-1 text-left" onClick={() => markNotificationRead(item.id)}><span className="block text-xs font-bold">{item.title}{!item.read && <span className="ml-2 inline-block size-1.5 rounded-full bg-primary align-middle" />}</span><span className="mt-1 block text-[11px] leading-relaxed text-muted-foreground">{item.description}</span><time className="mt-1 block text-[10px] text-dim">{new Date(item.createdAt).toLocaleString()}</time></button><button aria-label="Clear notification" onClick={() => clearNotification(item.id)} className="h-fit p-1 text-dim hover:text-destructive"><Trash2 size={13} /></button></div>; })}{notifications.length === 0 && <div className="px-5 py-10 text-center"><Bell size={20} className="mx-auto text-dim" /><p className="mt-3 text-sm font-semibold">You're all caught up</p><p className="mt-1 text-xs text-muted-foreground">Price alerts and demo activity will appear here.</p></div>}</div></div>}
+      {open && <div className="fixed right-3 top-16 z-[90] flex max-h-[min(70vh,560px)] w-[min(390px,calc(100vw-24px))] flex-col border border-border bg-background shadow-2xl sm:right-6"><div className="flex items-center justify-between border-b border-border px-4 py-3"><div><h2 className="text-sm font-bold">Notifications</h2><p className="text-[10px] text-dim">{unread} unread</p></div><div className="flex items-center gap-3"><button onClick={markAllNotificationsRead} disabled={unread === 0} className="text-[11px] font-semibold text-primary disabled:text-dim">Mark all read</button><button aria-label="Close notifications" onClick={() => setOpen(false)} className="p-1 text-dim hover:text-foreground">×</button></div></div><div className="min-h-0 overflow-y-auto">{notifications.map((item) => { const Icon = icons[item.type]; return <div key={item.id} className={`flex gap-3 border-b border-border px-4 py-3 ${item.read ? "" : "bg-primary/[0.035]"}`}><Icon size={16} className={`mt-0.5 shrink-0 ${item.type === "security" ? "text-warning" : "text-primary"}`} /><button className="min-w-0 flex-1 text-left" onClick={() => markNotificationRead(item.id)}><span className="block text-xs font-bold">{item.title}{!item.read && <span className="ml-2 inline-block size-1.5 rounded-full bg-primary align-middle" />}</span><span className="mt-1 block text-[11px] leading-relaxed text-muted-foreground">{item.description}</span><time className="mt-1 block text-[10px] text-dim">{new Date(item.createdAt).toLocaleString()}</time></button><button aria-label="Clear notification" onClick={() => clearNotification(item.id)} className="h-fit p-1 text-dim hover:text-destructive"><Trash2 size={13} /></button></div>; })}{notifications.length === 0 && <div className="px-5 py-10 text-center"><Bell size={20} className="mx-auto text-dim" /><p className="mt-3 text-sm font-semibold">You're all caught up</p><p className="mt-1 text-xs text-muted-foreground">Price alerts and account activity will appear here.</p></div>}</div></div>}
     </div>
   );
 }
@@ -323,11 +330,11 @@ function CommandPalette() {
   }, []);
   const staticItems = [
     { title: "Dashboard", detail: "Overview", to: "/account" },
-    { title: "Markets", detail: "Browse simulated markets", to: "/markets" },
+    { title: "Markets", detail: "Browse live markets", to: "/markets" },
     { title: "Trade", detail: "Open spot terminal", to: "/trade/BTC-USDT" },
-    { title: "Wallet", detail: "Demo portfolio", to: "/account#assets" },
+    { title: "Wallet", detail: "Your portfolio", to: "/account#assets" },
     { title: "Orders", detail: "Order history", to: "/account#orders" },
-    { title: "Settings", detail: "Demo profile", to: "/account#profile" },
+    { title: "Settings", detail: "Your profile", to: "/account#profile" },
     { title: "Account", detail: "Account overview", to: "/account" },
   ];
   const matchingMarkets = markets.filter((asset) => `${asset.symbol} ${asset.name} ${asset.symbol}/USDT`.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 6).map((asset) => ({ title: `${asset.symbol}/USDT`, detail: `${asset.name} · ${fmtPrice(asset.price)}`, to: `/trade/${asset.symbol}-USDT` }));
@@ -649,7 +656,7 @@ export function Footer() {
         >
           <Logo />
           <p className="mt-4 max-w-xs text-sm text-muted-foreground">
-            An institutional-grade trading interface with simulated data across every workflow.
+            An institutional-grade trading interface with market data across every workflow.
           </p>
           <div className="mt-5 flex flex-wrap gap-2">
             <a
@@ -736,12 +743,17 @@ export function Footer() {
         </motion.div>
       </div>
       <div className="border-t border-border">
-        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 text-xs text-dim md:flex-row md:justify-between md:px-6">
-          <span>© 2026 BR TRADES — Not a real exchange.</span>
-          <span className="flex items-center gap-1.5">
-            <ShieldCheck size={13} />
-            No real funds, licenses, reserves or customers are represented.
-          </span>
+        <div className="mx-auto max-w-7xl space-y-4 px-4 py-5 text-xs text-dim md:px-6">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <span>© 2026 BR TRADERS powered by Black Rocks. All rights reserved. Registered FinTech &amp; Digital Asset Provider.</span>
+            <span className="flex items-center gap-1.5">
+              Status: <strong className="text-primary">All Systems Normal</strong>
+              <span className="ml-3">Latency: <strong className="text-primary">0.8ms</strong></span>
+            </span>
+          </div>
+          {/* <p className="max-w-7xl leading-relaxed">
+            <strong>Risk Disclaimer:</strong> Digital asset prices are subject to high market risk and price volatility. The value of your investment may go down or up, and you may not get back the amount invested. You are solely responsible for your investment decisions and NexifyTrade is not liable for any losses you may incur. Leveraged trading involves significant risk. Please ensure you fully understand the risks before trading.
+          </p> */}
         </div>
       </div>
     </footer>

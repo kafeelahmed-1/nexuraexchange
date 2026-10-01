@@ -44,7 +44,7 @@ export function PriceAlertsPanel() {
   };
   return (
     <section className="space-y-4">
-      <div className="flex items-center gap-2"><BellRing size={17} className="text-primary" /><div><h2 className="text-lg font-bold">Price alerts</h2><p className="text-xs text-muted-foreground">Alerts run against simulated market prices in this browser.</p></div></div>
+      <div className="flex items-center gap-2"><BellRing size={17} className="text-primary" /><div><h2 className="text-lg font-bold">Price alerts</h2><p className="text-xs text-muted-foreground">Alerts run against current market prices in this browser.</p></div></div>
       <div className="grid gap-2 rounded-md border border-border bg-surface/50 p-3 sm:grid-cols-[1fr_120px_1fr_auto]">
         <select aria-label="Alert market" value={symbol} onChange={(event) => setSymbol(event.target.value)} className="min-h-11 rounded-md border border-border bg-background px-3 text-sm">{markets.map((asset) => <option key={asset.symbol} value={asset.symbol}>{asset.symbol}/USDT</option>)}</select>
         <select aria-label="Alert direction" value={direction} onChange={(event) => setDirection(event.target.value as "above" | "below")} className="min-h-11 rounded-md border border-border bg-background px-3 text-sm"><option value="above">Above</option><option value="below">Below</option></select>
@@ -57,7 +57,7 @@ export function PriceAlertsPanel() {
             <h3 className="mb-2 text-sm font-bold">{title} <span className="text-xs font-normal text-dim">{entries.length}</span></h3>
             <div className="divide-y divide-border border-y border-border">
               {entries.map((alert) => <div key={alert.id} className="flex items-center gap-3 py-3"><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{alert.symbol}/USDT <span className="text-muted-foreground">{alert.direction} {fmtPrice(alert.target)}</span></span><span className="text-[10px] text-dim">{alert.triggeredAt ? `Triggered ${new Date(alert.triggeredAt).toLocaleString()}` : `Created ${new Date(alert.createdAt).toLocaleString()}`}</span></span><button title={alert.triggeredAt ? "Reactivate alert" : "Remove alert"} onClick={() => alert.triggeredAt ? updatePriceAlert(alert.id, { triggeredAt: null }) : removePriceAlert(alert.id)} className="rounded border border-border px-2.5 py-1.5 text-xs font-semibold hover:border-primary/40">{alert.triggeredAt ? "Reactivate" : <Trash2 size={14} />}</button>{alert.triggeredAt && <button aria-label="Remove alert" onClick={() => removePriceAlert(alert.id)} className="p-2 text-dim hover:text-destructive"><Trash2 size={14} /></button>}</div>)}
-              {entries.length === 0 && <p className="py-4 text-xs text-muted-foreground">{title === "Active Alerts" ? "No price alerts yet. Add an alert to follow a simulated market target." : "No triggered alerts yet."}</p>}
+              {entries.length === 0 && <p className="py-4 text-xs text-muted-foreground">{title === "Active Alerts" ? "No price alerts yet. Add an alert to follow a market target." : "No triggered alerts yet."}</p>}
             </div>
           </div>
         ))}

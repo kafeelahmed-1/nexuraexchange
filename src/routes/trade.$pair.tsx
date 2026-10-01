@@ -6,7 +6,7 @@ import { AnimatedNumber } from "@/components/nx/motion";
 import { PriceAlertsPanel, TradingCalculator } from "@/components/nx/trading-features";
 
 export const Route = createFileRoute("/trade/$pair")({
-  head: ({ params }) => ({ meta: [{ title: `${params.pair.replace("-", "/")} Paper Trading — BR TRADES` }, { name: "description", content: "Simulated spot trading terminal with candlestick chart and order book." }, { property: "og:title", content: `${params.pair} Spot Terminal — BR TRADES` }, { property: "og:description", content: "Paper trading terminal." }] }),
+  head: ({ params }) => ({ meta: [{ title: `${params.pair.replace("-", "/")} Paper Trading — BR TRADES` }, { name: "description", content: "Spot trading terminal with candlestick chart and order book." }, { property: "og:title", content: `${params.pair} Spot Terminal — BR TRADES` }, { property: "og:description", content: "Paper trading terminal." }] }),
   component: Trade,
 });
 
@@ -34,7 +34,7 @@ function Trade() {
       <div className="panel p-4 sm:p-5"><PriceAlertsPanel /></div>
       <div className="panel p-4 sm:p-5"><TradingCalculator /></div>
       <div className="panel px-4 sm:px-5"><MarketDetail symbol={a.symbol} /></div>
-      <p className="px-1 text-[10px] text-warning">DEMO MODE · Simulated paper-trading environment. No real funds or cryptocurrency are involved.</p>
+      <p className="px-1 text-[10px] text-warning">ACCOUNT MODE · Paper-trading environment. No real funds or cryptocurrency are involved.</p>
     </div>
   );
 }

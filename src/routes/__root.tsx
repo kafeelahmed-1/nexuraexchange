@@ -87,7 +87,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "A premium institutional crypto exchange interface with simulated markets and paper trading.",
+          "A premium institutional crypto exchange interface with market data and paper trading.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

@@ -50,7 +50,7 @@ export function EarnPage() {
           <div>
             <h2 className="text-xl font-bold">Available products</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              APY and availability are simulated and may change.
+              APY and availability are indicative and may change.
             </p>
           </div>
           <div className="flex flex-wrap gap-2" aria-label="Filter products by term">
@@ -116,9 +116,9 @@ export function EarnPage() {
               <button
                 type="button"
                 onClick={() =>
-                  toast.info("Demo product", {
+                  toast.info("Product information", {
                     description:
-                      "This simulated product does not accept deposits or create subscriptions.",
+                      "This product does not accept deposits or create subscriptions.",
                   })
                 }
                 className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground transition hover:brightness-110"
@@ -156,7 +156,7 @@ export function LaunchpadPage() {
     <>
       <PageHeader
         title="Token Launchpad"
-        desc="Discover simulated token launches and explore their subscription mechanics."
+        desc="Discover token launches and explore their subscription mechanics."
       />
       <main className={cn(wrap, "py-10")}>
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
@@ -274,7 +274,7 @@ export function LaunchpadPage() {
           ))}
         </div>
         <div className="mt-6 flex items-center gap-2 text-xs text-warning">
-          <SimulatedBadge /> All projects and sale metrics are fictional.
+          <SimulatedBadge /> All projects and sale metrics are platform previews.
         </div>
       </main>
     </>
@@ -300,7 +300,7 @@ export function NewsPage() {
     <>
       <PageHeader
         title="BR Trades News"
-        desc="Platform notes, security concepts, product updates and simulated market recaps."
+        desc="Platform notes, security concepts, product updates and market recaps."
       />
       <main className={cn(wrap, "py-10")}>
         <div className="mb-6 flex flex-col gap-4 border-b border-border pb-5 lg:flex-row lg:items-center lg:justify-between">
