@@ -417,8 +417,8 @@ export function PageLoader() {
     if (sessionStorage.getItem("nx-intro")) return;
     sessionStorage.setItem("nx-intro", "1");
     setShow(true);
-    const iv = setInterval(() => setI((x) => Math.min(x + 1, steps.length - 1)), 380);
-    const t = setTimeout(() => setShow(false), 1900);
+    const iv = setInterval(() => setI((x) => Math.min(x + 1, steps.length - 1)), 190);
+    const t = setTimeout(() => setShow(false), 950);
     return () => {
       clearInterval(iv);
       clearTimeout(t);
@@ -518,12 +518,19 @@ export function CustomCursor() {
           ? "var(--primary)"
           : "color-mix(in oklab, var(--cyan) 50%, transparent)";
       }
-      raf = requestAnimationFrame(loop);
+      if (Math.abs(mx - rx) > 0.5 || Math.abs(my - ry) > 0.5) {
+        raf = requestAnimationFrame(loop);
+      } else {
+        raf = 0;
+      }
     };
-    window.addEventListener("mousemove", move, { passive: true });
-    raf = requestAnimationFrame(loop);
+    const onMove = (e: MouseEvent) => {
+      move(e);
+      if (!raf) raf = requestAnimationFrame(loop);
+    };
+    window.addEventListener("mousemove", onMove, { passive: true });
     return () => {
-      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mousemove", onMove);
       cancelAnimationFrame(raf);
     };
   }, [enabled, fine]);
@@ -549,22 +556,6 @@ export function CustomCursor() {
           />
         </>
       )}
-      <button
-        type="button"
-        aria-label={`${enabled ? "Disable" : "Enable"} animated cursor`}
-        aria-pressed={enabled}
-        title={`${enabled ? "Disable" : "Enable"} animated cursor`}
-        onClick={() => setEnabled((value) => !value)}
-        className="fixed bottom-[148px] right-4 z-[95] flex h-7 w-12 items-center rounded-full border border-border bg-elevated/90 p-1 shadow-lg backdrop-blur-md transition hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:bottom-20 md:right-6"
-      >
-        <span
-          aria-hidden
-          className={cn(
-            "h-5 w-5 rounded-full transition-transform duration-200",
-            enabled ? "translate-x-5 bg-gradient-brand" : "translate-x-0 bg-dim",
-          )}
-        />
-      </button>
     </>
   );
 }

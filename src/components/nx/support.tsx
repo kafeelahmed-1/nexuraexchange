@@ -85,7 +85,7 @@ export function CustomerSupportWidget() {
         aria-label="Customer Support"
         aria-haspopup="dialog"
         aria-expanded={open}
-        className="support-launcher fixed bottom-[88px] right-4 z-[76] inline-flex h-12 w-12 items-center justify-center rounded-full border border-primary/40 bg-[#071711] text-primary shadow-[0_0_24px_-8px_var(--primary)] transition duration-200 hover:scale-105 hover:border-cyan/60 hover:text-cyan hover:shadow-[0_0_30px_-6px_var(--cyan)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan md:bottom-6 md:right-6 md:h-11 md:w-auto md:gap-2 md:rounded-full md:px-4"
+        className="support-launcher fixed bottom-[88px] left-4 right-auto z-[76] inline-flex h-12 w-12 items-center justify-center rounded-full border border-primary/40 bg-[#071711] text-primary shadow-[0_0_24px_-8px_var(--primary)] transition duration-200 hover:scale-105 hover:border-cyan/60 hover:text-cyan hover:shadow-[0_0_30px_-6px_var(--cyan)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan md:bottom-6 md:left-6 md:right-auto md:h-11 md:w-auto md:gap-2 md:rounded-full md:px-4"
       >
         <Headset size={19} aria-hidden="true" />
         <span className="hidden text-sm font-bold md:inline">Support</span>

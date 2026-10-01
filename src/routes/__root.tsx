@@ -25,6 +25,7 @@ import {
   Footer,
 } from "@/components/nx/chrome";
 import { CustomerSupportWidget } from "@/components/nx/support";
+import { PlatformChatWidget } from "@/components/nx/platform-chat";
 
 function NotFoundComponent() {
   return (
@@ -151,10 +152,10 @@ function RootComponent() {
       <AnimatePresence mode="wait">
         <motion.main
           key={path}
-          initial={{ opacity: 0, y: 12, filter: "blur(6px)" }}
-          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
           className={showExchangeChrome ? "pb-20 md:pb-0" : ""}
         >
           <Outlet />
@@ -163,6 +164,7 @@ function RootComponent() {
       {showExchangeChrome && !isTerminal && <Footer />}
       {showExchangeChrome && <MobileNavbar />}
       {showExchangeChrome && <CustomerSupportWidget />}
+      {!isAdminWorkspace && <PlatformChatWidget />}
       <Toaster
         position="bottom-right"
         theme="dark"

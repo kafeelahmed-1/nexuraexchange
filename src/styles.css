@@ -86,7 +86,8 @@
   body:has(.custom-cursor) { cursor: none; }
   a, button, input, img, [data-cursor] { cursor: none; }
   .white-panel, .white-panel *, .white-chart, .white-chart * { cursor: auto !important; }
-  header a, header button, header input, header img, header [data-cursor] { cursor: pointer !important; }
+  a, button, [role="button"], [data-cursor="button"], summary { cursor: pointer !important; }
+  header input { cursor: text !important; }
 }
 
 @utility num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
@@ -155,7 +156,7 @@
 @keyframes support-overlay-out { from { opacity: 1; } to { opacity: 0; } }
 
 @media (min-width: 768px) {
-  .support-panel { right: 24px; bottom: 80px; }
+  .support-panel { left: 24px; right: auto; bottom: 80px; }
 }
 @media (max-width: 767px) {
   .support-panel { right: 0; bottom: 0; width: 100vw; max-height: 88dvh; border-radius: 16px 16px 0 0; padding-bottom: env(safe-area-inset-bottom); }

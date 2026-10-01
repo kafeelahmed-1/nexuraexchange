@@ -58,7 +58,7 @@ export function HeroSection() {
               <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter email to claim bonus" className="min-w-0 flex-1 bg-transparent py-3 text-sm outline-none" /></label>
             <MagneticButton type="submit" className="min-w-[220px] py-3.5">
               <span className="flex flex-col leading-none text-left">
-                <span className="text-[1.8rem] font-black tracking-[-0.05em]">Claim $500</span>
+                <span className="text-[1.8rem] font-black tracking-[-0.05em]">Claim $200</span>
                 <span className="text-lg font-extrabold">Bonus</span>
               </span>
             </MagneticButton>
