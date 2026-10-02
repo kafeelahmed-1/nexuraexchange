@@ -11,7 +11,14 @@ async function adminRequest<T>(action: string, payload: Record<string, unknown> 
   const { data, error } = await supabase.functions.invoke<AdminReply<T>>("admin-user-management", {
     body: { action, ...payload },
   });
-  if (error) throw error;
+  if (error) {
+    const context = "context" in error ? error.context : undefined;
+    if (context instanceof Response) {
+      const reply = (await context.clone().json().catch(() => null)) as AdminReply<T> | null;
+      if (reply?.error) throw new Error(reply.error);
+    }
+    throw error;
+  }
   if (!data || data.error || data.data === undefined)
     throw new Error(data?.error ?? "Admin request failed.");
   return data.data;
@@ -43,8 +50,8 @@ export function updateDemoUserProfile(
   return adminRequest<DemoProfile>("update-user", { userId, changes });
 }
 
-export function toggleDemoUserSuspension(userId: string) {
-  return adminRequest<DemoProfile>("toggle-suspension", { userId });
+export function setDemoUserSuspension(userId: string, suspended: boolean) {
+  return adminRequest<DemoProfile>("set-suspension", { userId, suspended });
 }
 
 export function deleteDemoUser(userId: string) {

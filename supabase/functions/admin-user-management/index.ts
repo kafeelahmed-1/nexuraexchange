@@ -110,13 +110,6 @@ async function saveAccountState(userId: string, state: AccountState) {
 }
 
 async function listUsers() {
-  const { data: profiles, error: profileError } = await service
-    .from("profiles")
-    .select("id, full_name, role, suspended")
-    .eq("role", "user")
-    .order("id");
-  if (profileError) throw profileError;
-
   const users: User[] = [];
   for (let page = 1; ; page += 1) {
     const { data, error } = await service.auth.admin.listUsers({ page, perPage: 100 });
@@ -124,13 +117,36 @@ async function listUsers() {
     users.push(...data.users);
     if (data.users.length < 100) break;
   }
-  const userById = new Map(users.map((user) => [user.id, user]));
-  return (profiles as ProfileRow[])
-    .map((profile) => {
-      const user = userById.get(profile.id);
-      return user ? profileView(profile, user) : null;
-    })
-    .filter((profile): profile is NonNullable<typeof profile> => profile !== null);
+  const { data: profiles, error: profileError } = await service
+    .from("profiles")
+    .select("id, full_name, role, suspended");
+  if (profileError) throw profileError;
+
+  const profileById = new Map((profiles as ProfileRow[]).map((profile) => [profile.id, profile]));
+  const missingProfiles = users.filter((user) => !profileById.has(user.id));
+  if (missingProfiles.length) {
+    const { data: repairedProfiles, error } = await service
+      .from("profiles")
+      .upsert(
+        missingProfiles.map((user) => ({
+          id: user.id,
+          full_name:
+            typeof user.user_metadata?.["full_name"] === "string"
+              ? user.user_metadata["full_name"]
+              : "",
+          suspended: true,
+        })),
+        { onConflict: "id" },
+      )
+      .select("id, full_name, role, suspended");
+    if (error) throw error;
+    for (const profile of repairedProfiles as ProfileRow[]) profileById.set(profile.id, profile);
+  }
+
+  return users.flatMap((user) => {
+    const profile = profileById.get(user.id);
+    return profile?.role === "user" ? [profileView(profile, user)] : [];
+  });
 }
 
 async function handleAction(action: string, body: Record<string, unknown>) {
@@ -198,22 +214,56 @@ async function handleAction(action: string, body: Record<string, unknown>) {
     return profileView(nextProfile, nextUser);
   }
 
-  if (action === "toggle-suspension") {
+  if (action === "set-suspension") {
     const { profile, user } = await getTargetUser(userId);
-    const suspended = !profile.suspended;
-    const { error: authError } = await service.auth.admin.updateUserById(userId, {
-      ban_duration: suspended ? "876000h" : "none",
-    });
-    if (authError) throw authError;
-    const { error } = await service.from("profiles").update({ suspended }).eq("id", userId);
-    if (error) throw error;
+    const suspended = body.suspended;
+    if (typeof suspended !== "boolean") throw new Error("A suspension status is required.");
+    if (suspended === profile.suspended) return profileView(profile, user);
+    if (suspended) {
+      const { error } = await service.from("profiles").update({ suspended: true }).eq("id", userId);
+      if (error) throw error;
+      const { error: authError } = await service.auth.admin.updateUserById(userId, {
+        ban_duration: "876000h",
+      });
+      if (authError) console.error("Profile suspension applied, but Auth ban failed:", authError.message);
+    } else {
+      const { error: authError } = await service.auth.admin.updateUserById(userId, {
+        ban_duration: "none",
+      });
+      if (authError) throw authError;
+      const { error } = await service.from("profiles").update({ suspended: false }).eq("id", userId);
+      if (error) {
+        const { error: rollbackError } = await service.auth.admin.updateUserById(userId, {
+          ban_duration: "876000h",
+        });
+        if (rollbackError) console.error("Failed to restore Auth ban after reactivation error:", rollbackError.message);
+        throw error;
+      }
+    }
     return profileView({ ...profile, suspended }, user);
   }
 
   if (action === "delete-user") {
     await getTargetProfile(userId);
-    const { error } = await service.auth.admin.deleteUser(userId);
-    if (error) throw error;
+    const { error: deleteError } = await service.auth.admin.deleteUser(userId);
+    if (deleteError) {
+      if (!/database error deleting user|foreign key|constraint/i.test(deleteError.message)) {
+        throw deleteError;
+      }
+      const { error: accountError } = await service.from("account_data").delete().eq("user_id", userId);
+      if (accountError) throw accountError;
+      const { error: profileError } = await service.from("profiles").delete().eq("id", userId);
+      if (profileError) throw profileError;
+      const { error } = await service.auth.admin.deleteUser(userId);
+      if (error) throw error;
+    }
+    const { error: accountCleanupError } = await service
+      .from("account_data")
+      .delete()
+      .eq("user_id", userId);
+    if (accountCleanupError) throw accountCleanupError;
+    const { error: profileCleanupError } = await service.from("profiles").delete().eq("id", userId);
+    if (profileCleanupError) throw profileCleanupError;
     return null;
   }
 
@@ -274,6 +324,7 @@ async function handleAction(action: string, body: Record<string, unknown>) {
         ...record,
         manualPnl: pnl,
         pnl,
+        realizedPnL: pnl,
         adjustedByAdmin: true,
         updatedAt: new Date().toISOString(),
       };

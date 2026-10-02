@@ -65,14 +65,29 @@ function AccountOverview() {
   useEffect(() => {
     if (!loaded || !user || isAdminUser(user)) return;
     let active = true;
-    void getDemoAccountState(user.id).then((state) => {
-      if (!active) return;
-      setAccountState(state);
-      setLoadError("");
-    }).catch((error: unknown) => {
-      if (active) setLoadError(error instanceof Error ? error.message : "Unable to load your account.");
-    });
-    return () => { active = false; };
+    const refreshAccount = async () => {
+      try {
+        const state = await getDemoAccountState(user.id);
+        if (!active) return;
+        setAccountState(state);
+        setLoadError("");
+      } catch (error) {
+        if (active) setLoadError(error instanceof Error ? error.message : "Unable to load your account.");
+      }
+    };
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void refreshAccount();
+    };
+    void refreshAccount();
+    const refreshInterval = window.setInterval(refreshWhenVisible, 15_000);
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      active = false;
+      window.clearInterval(refreshInterval);
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
   }, [loaded, user, reloadKey]);
 
   const holdings = useMemo(() => {

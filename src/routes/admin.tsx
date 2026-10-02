@@ -37,7 +37,7 @@ import {
   getAllDemoUsers,
   getAdminAccountState,
   saveAdminAccountState,
-  toggleDemoUserSuspension,
+  setDemoUserSuspension,
   updateDemoUserProfile,
 } from "@/lib/supabase-admin";
 import {
@@ -311,7 +311,7 @@ function AdminPanel() {
   const handleSuspend = async () => {
     if (!selectedUser) return;
     try {
-      const next = await toggleDemoUserSuspension(selectedUser.id);
+      const next = await setDemoUserSuspension(selectedUser.id, !selectedUser.suspended);
       setUsers((current) => current.map((entry) => (entry.id === next.id ? next : entry)));
       toast.success(next.suspended ? "User suspended" : "User reactivated");
     } catch (error) {
@@ -328,7 +328,7 @@ function AdminPanel() {
     if (!window.confirm(`Remove ${selectedUser.email} and all of their account data?`)) return;
     try {
       await deleteDemoUser(selectedUser.id);
-      const next = (await getAllDemoUsers()).filter((entry) => entry.role !== "admin");
+      const next = users.filter((entry) => entry.id !== selectedUser.id);
       setUsers(next);
       setSelected(next[0]?.id ?? "");
       setShowUserList(next.length === 0);

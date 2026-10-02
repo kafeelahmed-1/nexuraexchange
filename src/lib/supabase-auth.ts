@@ -301,12 +301,27 @@ export function useDemoUser() {
       }
       try {
         const profile = await getProfile(authUser);
-        if (active) setUser(profile.suspended ? null : profile);
-      } catch {
-        if (active) setUser(null);
+        if (profile.suspended) {
+          await supabase.auth.signOut({ scope: "local" });
+          if (active) setUser(null);
+          return;
+        }
+        if (active) setUser(profile);
+      } catch (error) {
+        const missingProfile =
+          !!error && typeof error === "object" && "code" in error && error.code === "PGRST116";
+        if (missingProfile) await supabase.auth.signOut({ scope: "local" });
+        if (active && missingProfile) setUser(null);
       } finally {
         if (active) setLoaded(true);
       }
+    };
+
+    const refreshCurrentUser = () => {
+      if (document.visibilityState !== "visible") return;
+      void supabase.auth.getSession().then(({ data, error }) => {
+        if (!error) void refresh(data.session?.user ?? null);
+      });
     };
 
     void supabase.auth.getSession().then(({ data, error }) => {
@@ -322,9 +337,15 @@ export function useDemoUser() {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       window.setTimeout(() => void refresh(session?.user ?? null), 0);
     });
+    const refreshInterval = window.setInterval(refreshCurrentUser, 15_000);
+    window.addEventListener("focus", refreshCurrentUser);
+    document.addEventListener("visibilitychange", refreshCurrentUser);
 
     return () => {
       active = false;
+      window.clearInterval(refreshInterval);
+      window.removeEventListener("focus", refreshCurrentUser);
+      document.removeEventListener("visibilitychange", refreshCurrentUser);
       subscription.unsubscribe();
     };
   }, []);
