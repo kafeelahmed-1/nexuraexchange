@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { Search, ArrowUpDown, Check, Loader2, Star, Flame, BarChart3 } from "lucide-react";
+import { Search, ArrowUpDown, Check, Loader2, Star, Flame, BarChart3, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { fmtPrice, fmtCompact, genCandles, useAsset, useMarkets, type Asset, type Candle } from "@/lib/market";
@@ -256,6 +256,9 @@ export function CandleChart({ price, tf, height = 380 }: { price: number; tf: st
   const [candles, setCandles] = useState<Candle[] | null>(null);
   const [hover, setHover] = useState<number | null>(null);
   const [my, setMy] = useState<number | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const touchPoints = useRef(new Map<number, { x: number; y: number }>());
+  const pinchStart = useRef({ distance: 0, zoom: 1 });
   const base = useRef(price);
   useEffect(() => {
     setCandles(null);
@@ -265,20 +268,55 @@ export function CandleChart({ price, tf, height = 380 }: { price: number; tf: st
   }, [tf]);
   if (!candles) return <Skeleton className="w-full" />;
   const W = 800, H = height, pad = 50;
-  const hi = Math.max(...candles.map((c) => c.h)), lo = Math.min(...candles.map((c) => c.l));
+  const visibleCount = Math.max(12, Math.ceil(candles.length / zoom));
+  const visibleCandles = candles.slice(-visibleCount);
+  const hi = Math.max(...visibleCandles.map((c) => c.h)), lo = Math.min(...visibleCandles.map((c) => c.l));
   const y = (v: number) => 10 + ((hi - v) / (hi - lo)) * (H - 60);
-  const cw = (W - pad) / candles.length;
-  const hc = hover != null ? candles[hover] : null;
+  const cw = (W - pad) / visibleCandles.length;
+  const hc = hover != null ? visibleCandles[hover] : null;
+  const changeZoom = (next: number) => {
+    setZoom(Math.min(4, Math.max(1, next)));
+    setHover(null);
+    setMy(null);
+  };
+  const pointerDistance = (points: Map<number, { x: number; y: number }>) => {
+    const [first, second] = [...points.values()];
+    return first && second ? Math.hypot(second.x - first.x, second.y - first.y) : 0;
+  };
   return (
     <div className="relative w-full" style={{ height: H }}>
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-full w-full"
-        onMouseMove={(e) => { const r = e.currentTarget.getBoundingClientRect(); const x = ((e.clientX - r.left) / r.width) * W; setHover(Math.min(candles.length - 1, Math.max(0, Math.floor(x / cw)))); setMy(((e.clientY - r.top) / r.height) * H); }}
+        style={{ touchAction: "pan-y" }}
+        onPointerDown={(e) => {
+          if (e.pointerType !== "touch") return;
+          e.currentTarget.setPointerCapture(e.pointerId);
+          touchPoints.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+          if (touchPoints.current.size === 2) pinchStart.current = { distance: pointerDistance(touchPoints.current), zoom };
+        }}
+        onPointerMove={(e) => {
+          if (e.pointerType === "touch" && touchPoints.current.has(e.pointerId)) {
+            touchPoints.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            if (touchPoints.current.size === 2 && pinchStart.current.distance > 0) {
+              changeZoom(pinchStart.current.zoom * pointerDistance(touchPoints.current) / pinchStart.current.distance);
+            }
+          }
+        }}
+        onPointerUp={(e) => {
+          touchPoints.current.delete(e.pointerId);
+          if (touchPoints.current.size === 2) pinchStart.current = { distance: pointerDistance(touchPoints.current), zoom };
+        }}
+        onPointerCancel={(e) => touchPoints.current.delete(e.pointerId)}
+        onWheel={(e) => {
+          e.preventDefault();
+          changeZoom(zoom * (e.deltaY < 0 ? 1.2 : 1 / 1.2));
+        }}
+        onMouseMove={(e) => { const r = e.currentTarget.getBoundingClientRect(); const x = ((e.clientX - r.left) / r.width) * W; setHover(Math.min(visibleCandles.length - 1, Math.max(0, Math.floor(x / cw)))); setMy(((e.clientY - r.top) / r.height) * H); }}
         onMouseLeave={() => { setHover(null); setMy(null); }}>
         {[0, 1, 2, 3, 4].map((i) => {
           const yy = 10 + (i * (H - 60)) / 4;
           return <g key={i}><line x1={0} x2={W - pad} y1={yy} y2={yy} stroke="rgba(255,255,255,0.05)" /><text x={W - pad + 4} y={yy + 4} fill="var(--dim)" fontSize={10} fontFamily="monospace">{fmtPrice(hi - (i * (hi - lo)) / 4)}</text></g>;
         })}
-        {candles.map((c, i) => {
+        {visibleCandles.map((c, i) => {
           const up = c.c >= c.o, col = up ? "var(--primary)" : "var(--destructive)";
           return (
             <motion.g key={i} initial={{ opacity: 0, scaleY: 0 }} animate={{ opacity: 1, scaleY: 1 }} transition={{ delay: i * 0.008, duration: 0.3 }} style={{ transformOrigin: `${i * cw}px ${y(c.c)}px` }}>
@@ -291,6 +329,12 @@ export function CandleChart({ price, tf, height = 380 }: { price: number; tf: st
         {hover != null && <line x1={hover * cw + cw / 2} x2={hover * cw + cw / 2} y1={0} y2={H} stroke="rgba(255,255,255,0.25)" strokeDasharray="3 3" />}
         {my != null && <line x1={0} x2={W - pad} y1={my} y2={my} stroke="rgba(255,255,255,0.25)" strokeDasharray="3 3" />}
       </svg>
+      <div className="absolute right-2 top-2 z-10 flex items-center gap-1 rounded-md border border-border bg-background/90 p-1 backdrop-blur">
+        <button type="button" aria-label="Zoom out chart" title="Zoom out" disabled={zoom <= 1} onClick={() => changeZoom(zoom / 1.25)} className="rounded p-1.5 text-muted-foreground transition hover:bg-elevated hover:text-foreground disabled:opacity-40"><ZoomOut size={15} /></button>
+        <span className="min-w-10 text-center text-[10px] font-semibold text-muted-foreground">{Math.round(zoom * 100)}%</span>
+        <button type="button" aria-label="Zoom in chart" title="Zoom in" disabled={zoom >= 4} onClick={() => changeZoom(zoom * 1.25)} className="rounded p-1.5 text-muted-foreground transition hover:bg-elevated hover:text-foreground disabled:opacity-40"><ZoomIn size={15} /></button>
+        <button type="button" aria-label="Reset chart zoom" title="Reset zoom" disabled={zoom === 1} onClick={() => changeZoom(1)} className="rounded p-1.5 text-muted-foreground transition hover:bg-elevated hover:text-foreground disabled:opacity-40"><RotateCcw size={14} /></button>
+      </div>
       {hc && (
         <div className="num pointer-events-none absolute left-3 top-2 flex flex-wrap gap-3 rounded-md bg-background/80 px-2 py-1 text-[11px] backdrop-blur">
           <span className="text-muted-foreground">O <b className="text-foreground">{fmtPrice(hc.o)}</b></span>

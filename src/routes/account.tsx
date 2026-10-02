@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import {
   Activity,
   ArrowDownToLine,
   ArrowRight,
@@ -13,7 +22,12 @@ import {
   TrendingUp,
   Wallet,
 } from "lucide-react";
-import { getDemoAccountState, isAdminUser, useDemoUser, type DemoAccountState } from "@/lib/supabase-auth";
+import {
+  getDemoAccountState,
+  isAdminUser,
+  useDemoUser,
+  type DemoAccountState,
+} from "@/lib/supabase-auth";
 import { useMarkets } from "@/lib/market";
 
 export const Route = createFileRoute("/account")({
@@ -36,6 +50,8 @@ function AccountOverview() {
   const [loadError, setLoadError] = useState("");
   const [showBalances, setShowBalances] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
+  const [performancePeriod, setPerformancePeriod] = useState<"7d" | "30d" | "all">("30d");
+  const [activeSection, setActiveSection] = useState<"performance" | "assets" | "activity" | "orders">("performance");
 
   useEffect(() => {
     if (!loaded) return;
@@ -98,7 +114,7 @@ function AccountOverview() {
         {
           id: textFrom(record, ["id"], `trade-${index}`),
           title: `${side} ${symbol}`,
-          detail: "Paper trade",
+          detail: "Simulated trade",
           amount: numberFrom(record, ["value", "notional", "total", "quoteQty"]),
           date: textFrom(record, ["createdAt", "timestamp", "time", "date"], ""),
           kind: "trade" as const,
@@ -129,9 +145,58 @@ function AccountOverview() {
     });
   }, [accountState]);
 
+  const tradePerformance = useMemo(() => {
+    const now = Date.now();
+    const cutoff = performancePeriod === "7d"
+      ? now - 7 * 24 * 60 * 60 * 1000
+      : performancePeriod === "30d"
+        ? now - 30 * 24 * 60 * 60 * 1000
+        : 0;
+    const trades = (accountState?.orders.tradeHistory ?? [])
+      .flatMap((entry) => {
+        const record = toRecord(entry);
+        if (!record) return [];
+        const pnl = numberFrom(record, ["realizedPnL", "realized_pnl"]);
+        const date = textFrom(record, ["createdAt", "timestamp", "time", "date"], "");
+        const timestamp = dateValue(date);
+        if (pnl === null || !timestamp || timestamp < cutoff) return [];
+        return [{
+          pnl,
+          timestamp,
+          market: textFrom(record, ["pair", "symbol", "market"], "Other"),
+        }];
+      })
+      .filter((trade) => trade.pnl !== 0)
+      .sort((a, b) => a.timestamp - b.timestamp);
+    let cumulativePnl = 0;
+    const chartData = trades.map((trade) => {
+      cumulativePnl += trade.pnl;
+      return {
+        date: new Date(trade.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        pnl: cumulativePnl,
+      };
+    });
+    const marketTotals = new Map<string, number>();
+    trades.forEach((trade) =>
+      marketTotals.set(trade.market, (marketTotals.get(trade.market) ?? 0) + trade.pnl),
+    );
+    const markets = [...marketTotals.entries()]
+      .map(([market, pnl]) => ({ market, pnl }))
+      .sort((a, b) => b.pnl - a.pnl)
+      .slice(0, 4);
+    const wins = trades.filter((trade) => trade.pnl > 0).length;
+    return {
+      realizedPnl: trades.reduce((total, trade) => total + trade.pnl, 0),
+      winRate: trades.length ? (wins / trades.length) * 100 : 0,
+      closedTrades: trades.length,
+      chartData: [{ date: "Start", pnl: 0 }, ...chartData],
+      markets,
+    };
+  }, [accountState, performancePeriod]);
+
   if (!loaded || !user || (!accountState && !loadError)) {
     return (
-      <main className="mx-auto min-h-[55vh] max-w-7xl px-4 py-8 md:px-6" aria-busy="true">
+      <main className="account-dashboard mx-auto min-h-[55vh] max-w-7xl px-4 py-8 md:px-6" aria-busy="true">
         <div className="shimmer h-8 w-48 rounded" />
         <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
           {Array.from({ length: 4 }, (_, index) => (
@@ -145,7 +210,7 @@ function AccountOverview() {
 
   if (loadError || !accountState) {
     return (
-      <main className="mx-auto min-h-[55vh] max-w-7xl px-4 py-8 md:px-6">
+      <main className="account-dashboard mx-auto min-h-[55vh] max-w-7xl px-4 py-8 md:px-6">
         <div role="alert" className="border border-destructive/30 bg-destructive/5 p-5 sm:p-6">
           <h1 className="text-lg font-bold">Account data is unavailable</h1>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
@@ -184,88 +249,120 @@ function AccountOverview() {
     value.toLocaleString("en-US", { maximumFractionDigits: 8 });
 
   return (
-    <main className="mx-auto min-h-[65vh] max-w-7xl px-4 pb-12 pt-6 md:px-6 md:pt-9">
-      <header className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
+    <main className="account-dashboard mx-auto min-h-[65vh] max-w-7xl px-4 pb-28 pt-5 md:px-6 md:pb-12 md:pt-8">
+      <header className="mb-3 flex items-center justify-between gap-3">
         <div>
-          <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
+          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
             <span className="size-1.5 rounded-full bg-primary" /> Account workspace
           </div>
-          <h1 className="text-2xl font-bold sm:text-3xl">
-            Welcome back, {user.name.split(" ")[0]}
-          </h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">
-            Your portfolio and account activity, all in one place.
-          </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <span className="inline-flex items-center gap-1.5 border border-warning/25 bg-warning/[0.06] px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-warning">
             <ShieldCheck size={13} /> User account
           </span>
-          <button
-            type="button"
-            onClick={() => setShowBalances((visible) => !visible)}
-            aria-label={showBalances ? "Hide balances" : "Show balances"}
-            title={showBalances ? "Hide balances" : "Show balances"}
-            className="grid size-9 place-items-center border border-border text-muted-foreground transition hover:bg-elevated hover:text-foreground"
-          >
-            {showBalances ? <Eye size={16} /> : <EyeOff size={16} />}
-          </button>
         </div>
       </header>
 
       <section
-        aria-label="Portfolio summary"
-        className="grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2 xl:grid-cols-4"
+        aria-label="Total assets and profit and loss"
+        id="overview"
+        className="overflow-hidden rounded-xl border border-border bg-card shadow-sm"
       >
-        <div className="bg-card p-4 sm:p-5 xl:col-span-2">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs font-medium text-muted-foreground">Total portfolio value</span>
-            <Wallet size={16} className="text-primary" />
+        <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+              Total assets
+              <button
+                type="button"
+                onClick={() => setShowBalances((visible) => !visible)}
+                aria-label={showBalances ? "Hide balances" : "Show balances"}
+                title={showBalances ? "Hide balances" : "Show balances"}
+                className="grid size-7 place-items-center text-muted-foreground transition hover:text-foreground"
+              >
+                {showBalances ? <Eye size={15} /> : <EyeOff size={15} />}
+              </button>
+            </div>
+            <div className="num mt-1 truncate text-3xl font-bold sm:text-4xl">
+              {displayUsd(allocationTotal)}
+            </div>
+            <p className="mt-1 text-xs text-dim">Estimated portfolio value</p>
           </div>
-          <div className="num mt-3 truncate text-3xl font-bold sm:text-4xl">
-            {displayUsd(allocationTotal)}
-          </div>
-          <p className="mt-2 text-xs text-dim">Estimated value across your user account</p>
-          <div className="mt-5 flex flex-wrap gap-2">
+          <div className="flex shrink-0 flex-wrap gap-2">
             <Link
               to="/checkout"
-              className="inline-flex min-h-10 items-center justify-center gap-2 bg-gradient-brand px-3.5 text-xs font-bold text-primary-foreground transition hover:brightness-110"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-gradient-brand px-6 text-sm font-bold text-primary-foreground shadow-sm transition hover:-translate-y-0.5 hover:brightness-105 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
-              <ArrowDownToLine size={14} /> Add funds
-            </Link>
-            <Link
-              to="/trade/$pair"
-              params={{ pair: "BTC-USDT" }}
-              className="inline-flex min-h-10 items-center justify-center gap-2 border border-border px-3.5 text-xs font-bold transition hover:border-primary/40 hover:text-primary"
-            >
-              Trade <ArrowUpRight size={14} />
+              <ArrowDownToLine size={15} /> Deposit
             </Link>
           </div>
         </div>
+        <div className="grid grid-cols-2 gap-px border-t border-border bg-border">
+          <div className="min-w-0 bg-card px-4 py-3 sm:px-6">
+            <div className="text-[11px] font-medium text-muted-foreground sm:text-xs">Realized P&amp;L</div>
+            <div className={`num mt-1 truncate text-sm font-bold sm:text-base ${accountState.portfolio.realizedPnL >= 0 ? "text-primary" : "text-destructive"}`}>
+              {displayUsd(accountState.portfolio.realizedPnL)}
+            </div>
+          </div>
+          <div className="min-w-0 bg-card px-4 py-3 sm:px-6">
+            <div className="text-[11px] font-medium text-muted-foreground sm:text-xs">Unrealized P&amp;L</div>
+            <div className={`num mt-1 truncate text-sm font-bold sm:text-base ${liveUnrealizedPnL >= 0 ? "text-primary" : "text-destructive"}`}>
+              {displayUsd(liveUnrealizedPnL)}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <nav
+        aria-label="Account shortcuts"
+        className="my-5 grid grid-cols-4 gap-1 rounded-xl border border-border bg-card p-2 shadow-[0_12px_28px_rgba(0,0,0,0.14)] sm:gap-2 sm:p-3"
+      >
+        <Link
+          to="/checkout"
+          className="group flex min-h-24 min-w-0 flex-col items-center justify-center gap-2 rounded-lg border border-transparent px-1 py-3 text-center transition duration-200 hover:-translate-y-0.5 hover:border-primary/15 hover:bg-primary/[0.035] active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+        >
+          <span className="grid size-12 place-items-center rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/15 to-cyan/10 text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_8px_18px_rgba(0,232,135,0.06)] transition-all duration-200 group-hover:border-primary/40 group-hover:from-primary/20 group-hover:to-cyan/15 group-hover:shadow-[0_0_24px_rgba(0,232,135,0.12)] sm:size-14">
+            <ArrowDownToLine size={20} strokeWidth={2.2} />
+          </span>
+          <span className="text-[11px] font-semibold text-muted-foreground transition-colors group-hover:text-foreground sm:text-xs">Add funds</span>
+        </Link>
+        <Link
+          to="/trade/$pair"
+          params={{ pair: "BTC-USDT" }}
+          className="group flex min-h-24 min-w-0 flex-col items-center justify-center gap-2 rounded-lg border border-transparent px-1 py-3 text-center transition duration-200 hover:-translate-y-0.5 hover:border-cyan/15 hover:bg-cyan/[0.035] active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+        >
+          <span className="grid size-12 place-items-center rounded-2xl border border-cyan/20 bg-gradient-to-br from-cyan/15 to-primary/10 text-cyan shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_8px_18px_rgba(8,217,245,0.06)] transition-all duration-200 group-hover:border-cyan/40 group-hover:from-cyan/20 group-hover:to-primary/15 group-hover:shadow-[0_0_24px_rgba(8,217,245,0.12)] sm:size-14">
+            <ArrowUpRight size={20} strokeWidth={2.2} />
+          </span>
+          <span className="text-[11px] font-semibold text-muted-foreground transition-colors group-hover:text-foreground sm:text-xs">Trade</span>
+        </Link>
+        <Link
+          to="/markets"
+          className="group flex min-h-24 min-w-0 flex-col items-center justify-center gap-2 rounded-lg border border-transparent px-1 py-3 text-center transition duration-200 hover:-translate-y-0.5 hover:border-primary/15 hover:bg-primary/[0.035] active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+        >
+          <span className="grid size-12 place-items-center rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/15 to-cyan/10 text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_8px_18px_rgba(0,232,135,0.06)] transition-all duration-200 group-hover:border-primary/40 group-hover:from-primary/20 group-hover:to-cyan/15 group-hover:shadow-[0_0_24px_rgba(0,232,135,0.12)] sm:size-14">
+            <TrendingUp size={20} strokeWidth={2.2} />
+          </span>
+          <span className="text-[11px] font-semibold text-muted-foreground transition-colors group-hover:text-foreground sm:text-xs">Markets</span>
+        </Link>
+        <a
+          href="#orders"
+          className="group flex min-h-24 min-w-0 flex-col items-center justify-center gap-2 rounded-lg border border-transparent px-1 py-3 text-center transition duration-200 hover:-translate-y-0.5 hover:border-cyan/15 hover:bg-cyan/[0.035] active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+        >
+          <span className="grid size-12 place-items-center rounded-2xl border border-cyan/20 bg-gradient-to-br from-cyan/15 to-primary/10 text-cyan shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_8px_18px_rgba(8,217,245,0.06)] transition-all duration-200 group-hover:border-cyan/40 group-hover:from-cyan/20 group-hover:to-primary/15 group-hover:shadow-[0_0_24px_rgba(8,217,245,0.12)] sm:size-14">
+            <Clock3 size={20} strokeWidth={2.2} />
+          </span>
+          <span className="text-[11px] font-semibold text-muted-foreground transition-colors group-hover:text-foreground sm:text-xs">Orders</span>
+        </a>
+      </nav>
+
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border shadow-sm">
         <SummaryMetric
           label="Available balance"
           value={displayUsd(accountState.portfolio.availableBalance)}
           note="Ready to use"
           icon={Wallet}
         />
-        <SummaryMetric
-          label="Unrealized P&L"
-          value={displayUsd(liveUnrealizedPnL)}
-          note="Open positions"
-          icon={liveUnrealizedPnL >= 0 ? TrendingUp : TrendingDown}
-          positive={liveUnrealizedPnL >= 0}
-        />
-      </section>
-
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <SummaryMetric
-          label="Realized P&L"
-          value={displayUsd(accountState.portfolio.realizedPnL)}
-          note="Closed trades"
-          icon={Activity}
-          positive={accountState.portfolio.realizedPnL >= 0}
-        />
-        <div className="flex min-h-[108px] items-center justify-between gap-4 border border-border bg-card px-4 py-4 sm:px-5">
+        <div className="flex min-h-[108px] items-center justify-between gap-4 bg-card px-4 py-4 sm:px-5">
           <div className="min-w-0">
             <div className="text-xs font-medium text-muted-foreground">Open orders</div>
             <div className="num mt-2 text-xl font-bold">{openOrders.length}</div>
@@ -277,8 +374,171 @@ function AccountOverview() {
         </div>
       </div>
 
+      {holdings.length > 0 && (
+        <section aria-label="Your leading assets" className="mt-7">
+          <div className="mb-3 flex items-end justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-bold">Your assets</h2>
+              <p className="mt-1 text-xs text-muted-foreground">Live value and 24h movement</p>
+            </div>
+            <a href="#assets" className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-primary">
+              All assets <ArrowRight size={13} />
+            </a>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {holdings.slice(0, 4).map((asset) => (
+              <a key={asset.symbol} href="#assets" className="min-w-0 rounded-lg border border-border bg-card p-3 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-4">
+                <span className="block truncate text-xs font-semibold text-muted-foreground">{asset.name}</span>
+                <span className="mt-2 block truncate text-sm font-bold">{asset.symbol}</span>
+                <span className="num mt-3 block truncate text-xs font-semibold">{displayUsd(asset.value)}</span>
+                <span className={`mt-1 block text-[11px] font-semibold ${asset.change >= 0 ? "text-primary" : "text-destructive"}`}>
+                  {asset.symbol === "USDT" ? "0.00%" : `${asset.change > 0 ? "+" : ""}${asset.change.toFixed(2)}%`}
+                </span>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <nav aria-label="Dashboard sections" className="sticky top-0 z-20 mt-7 flex gap-5 overflow-x-auto border-b border-border bg-background/95 text-xs font-semibold shadow-[0_1px_0_rgba(29,66,49,0.04)] backdrop-blur md:static">
+        {([ ["performance", "Performance"], ["assets", "Assets"], ["activity", "Activity"], ["orders", "Orders"] ] as const).map(([id, label]) => (
+          <a
+            key={id}
+            href={`#${id}`}
+            aria-current={activeSection === id ? "location" : undefined}
+            onClick={() => setActiveSection(id)}
+            className={`shrink-0 border-b-2 py-3 transition-colors ${activeSection === id ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          >
+            {label}
+          </a>
+        ))}
+      </nav>
+
+      <section id="performance" className="mt-4 scroll-mt-16 overflow-hidden rounded-xl border border-border bg-card shadow-sm" aria-label="Trade performance">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-4 sm:px-5">
+          <div>
+            <h2 className="text-sm font-bold">Trade performance</h2>
+            <p className="mt-1 text-xs text-muted-foreground">Realized results from completed trades</p>
+          </div>
+          <div
+            className="inline-flex border border-border bg-surface p-0.5"
+            aria-label="Performance period"
+          >
+            {([ ["7d", "7D"], ["30d", "30D"], ["all", "All"] ] as const).map(
+              ([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={performancePeriod === value}
+                  onClick={() => setPerformancePeriod(value)}
+                  className={`min-h-8 min-w-10 px-2 text-xs font-semibold transition ${performancePeriod === value ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  {label}
+                </button>
+              ),
+            )}
+          </div>
+        </div>
+        <div className="grid gap-px border-b border-border bg-border sm:grid-cols-3">
+          <PerformanceMetric
+            label="Realized P&L"
+            value={displayUsd(tradePerformance.realizedPnl)}
+            positive={tradePerformance.realizedPnl >= 0}
+          />
+          <PerformanceMetric label="Win rate" value={`${tradePerformance.winRate.toFixed(1)}%`} />
+          <PerformanceMetric label="Completed trades" value={String(tradePerformance.closedTrades)} />
+        </div>
+        {tradePerformance.closedTrades ? (
+          <div className="grid gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(0,1.6fr)_minmax(180px,0.7fr)]">
+            <div className="min-w-0">
+              <h3 className="mb-3 text-xs font-semibold text-muted-foreground">Cumulative realized P&L</h3>
+              <div
+                className="h-56 w-full"
+                role="img"
+                aria-label="Chart of cumulative realized profit and loss"
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart
+                    data={tradePerformance.chartData}
+                    margin={{ top: 6, right: 8, bottom: 0, left: 0 }}
+                  >
+                    <defs>
+                      <linearGradient id="trade-performance-fill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.28} />
+                        <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
+                    <XAxis
+                      dataKey="date"
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
+                      minTickGap={24}
+                    />
+                    <YAxis
+                      tickLine={false}
+                      axisLine={false}
+                      width={58}
+                      tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
+                      tickFormatter={(value: number) =>
+                        showBalances
+                          ? `$${value.toLocaleString("en-US", { maximumFractionDigits: 0 })}`
+                          : "••••"
+                      }
+                    />
+                    <Tooltip
+                      formatter={(value) => [
+                        showBalances ? formatUsd(Number(value)) : "••••••",
+                        "Realized P&L",
+                      ]}
+                      contentStyle={{
+                        background: "var(--card)",
+                        border: "1px solid var(--border)",
+                        borderRadius: 4,
+                        fontSize: 12,
+                      }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="pnl"
+                      stroke="var(--primary)"
+                      strokeWidth={2}
+                      fill="url(#trade-performance-fill)"
+                      isAnimationActive={false}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+            <div>
+              <h3 className="mb-3 text-xs font-semibold text-muted-foreground">By market</h3>
+              <div className="divide-y divide-border border-y border-border">
+                {tradePerformance.markets.map(({ market, pnl }) => (
+                  <div
+                    key={market}
+                    className="flex items-center justify-between gap-3 py-3 text-xs"
+                  >
+                    <span className="min-w-0 truncate font-semibold">{market}</span>
+                    <span
+                      className={`num shrink-0 font-semibold ${pnl >= 0 ? "text-primary" : "text-destructive"}`}
+                    >
+                      {displayUsd(pnl)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className="px-5 py-8 text-center text-sm text-muted-foreground">
+            Completed trade results will appear here when available for this period.
+          </p>
+        )}
+      </section>
+
       <div className="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.85fr)]">
-        <section className="min-w-0 border border-border bg-card">
+        <section id="assets" className="min-w-0 scroll-mt-16 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-4 sm:px-5">
             <div>
               <h2 className="text-sm font-bold">Your assets</h2>
@@ -344,7 +604,7 @@ function AccountOverview() {
               <Wallet size={20} className="mx-auto text-dim" />
               <p className="mt-3 text-sm font-semibold">No assets yet</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Add funds or place a paper trade to see balances here.
+                Add funds or place a simulated trade to see balances here.
               </p>
             </div>
           )}
@@ -355,7 +615,7 @@ function AccountOverview() {
         </section>
 
         <div className="grid gap-6">
-          <section className="border border-border bg-card">
+          <section id="allocation" className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
             <div className="flex items-center justify-between border-b border-border px-4 py-4 sm:px-5">
               <div>
                 <h2 className="text-sm font-bold">Asset allocation</h2>
@@ -406,7 +666,7 @@ function AccountOverview() {
             </div>
           </section>
 
-          <section className="border border-border bg-card">
+          <section id="activity" className="scroll-mt-16 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
             <div className="flex items-center justify-between border-b border-border px-4 py-4 sm:px-5">
               <div>
                 <h2 className="text-sm font-bold">Recent activity</h2>
@@ -448,7 +708,7 @@ function AccountOverview() {
         </div>
       </div>
 
-      <section className="mt-6 border border-border bg-card">
+      <section id="orders" className="mt-6 scroll-mt-16 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-4 sm:px-5">
           <div>
             <h2 className="text-sm font-bold">Open orders</h2>
@@ -554,6 +814,27 @@ function SummaryMetric({
       </div>
       <div className="grid size-9 shrink-0 place-items-center border border-border bg-surface text-muted-foreground">
         <Icon size={16} />
+      </div>
+    </div>
+  );
+}
+
+function PerformanceMetric({
+  label,
+  value,
+  positive,
+}: {
+  label: string;
+  value: string;
+  positive?: boolean;
+}) {
+  return (
+    <div className="bg-card px-4 py-3.5 sm:px-5">
+      <div className="text-xs font-medium text-muted-foreground">{label}</div>
+      <div
+        className={`num mt-2 text-lg font-bold ${positive === undefined ? "text-foreground" : positive ? "text-primary" : "text-destructive"}`}
+      >
+        {value}
       </div>
     </div>
   );
