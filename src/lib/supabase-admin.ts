@@ -51,7 +51,7 @@ export function updateDemoUserProfile(
 }
 
 export function setDemoUserSuspension(userId: string, suspended: boolean) {
-  return adminRequest<DemoProfile>("set-suspension", { userId, suspended });
+  return adminRequest<DemoProfile>("update-user", { userId, changes: { suspended } });
 }
 
 export function deleteDemoUser(userId: string) {

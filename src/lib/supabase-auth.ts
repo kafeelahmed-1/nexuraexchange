@@ -327,11 +327,7 @@ export function useDemoUser() {
               window.dispatchEvent(new Event(accountStateChangedEvent));
             }
           } catch (error) {
-            toast.error(
-              error instanceof Error
-                ? `Unable to check your welcome bonus: ${error.message}`
-                : "Unable to check your welcome bonus. Please try again later.",
-            );
+            console.warn("Welcome bonus check skipped:", error);
           }
         }
         if (active) setUser(profile);

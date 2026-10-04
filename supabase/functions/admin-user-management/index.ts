@@ -84,6 +84,50 @@ async function getTargetUser(userId: string) {
   return { profile, user: data.user };
 }
 
+async function setUserSuspension(
+  userId: string,
+  profile: ProfileRow,
+  user: User,
+  suspended: boolean,
+) {
+  if (suspended === profile.suspended) return profileView(profile, user);
+
+  if (suspended) {
+    const { error } = await service.from("profiles").update({ suspended: true }).eq("id", userId);
+    if (error) throw error;
+
+    const { error: authError } = await service.auth.admin.updateUserById(userId, {
+      ban_duration: "876000h",
+    });
+    if (authError) {
+      const { error: rollbackError } = await service
+        .from("profiles")
+        .update({ suspended: false })
+        .eq("id", userId);
+      if (rollbackError)
+        console.error("Failed to restore profile after Auth ban error:", rollbackError.message);
+      throw authError;
+    }
+  } else {
+    const { error: authError } = await service.auth.admin.updateUserById(userId, {
+      ban_duration: "none",
+    });
+    if (authError) throw authError;
+
+    const { error } = await service.from("profiles").update({ suspended: false }).eq("id", userId);
+    if (error) {
+      const { error: rollbackError } = await service.auth.admin.updateUserById(userId, {
+        ban_duration: "876000h",
+      });
+      if (rollbackError)
+        console.error("Failed to restore Auth ban after reactivation error:", rollbackError.message);
+      throw error;
+    }
+  }
+
+  return profileView({ ...profile, suspended }, user);
+}
+
 async function getAccountState(userId: string) {
   const { data, error } = await service
     .from("account_data")
@@ -191,7 +235,8 @@ async function handleAction(action: string, body: Record<string, unknown>) {
         ? (body.changes as Record<string, unknown>)
         : {};
     const authChanges: { email?: string; password?: string } = {};
-    const profileChanges: { full_name?: string; suspended?: boolean } = {};
+    const profileChanges: { full_name?: string } = {};
+    const suspended = typeof changes.suspended === "boolean" ? changes.suspended : undefined;
     if (typeof changes.name === "string" && changes.name.trim())
       profileChanges.full_name = changes.name.trim();
     if (typeof changes.email === "string" && changes.email.trim())
@@ -200,8 +245,6 @@ async function handleAction(action: string, body: Record<string, unknown>) {
       if (changes.password.length < 8) throw new Error("Password must have at least 8 characters.");
       authChanges.password = changes.password;
     }
-    if (typeof changes.suspended === "boolean") profileChanges.suspended = changes.suspended;
-
     if (Object.keys(authChanges).length) {
       const { error } = await service.auth.admin.updateUserById(userId, authChanges);
       if (error) throw error;
@@ -209,6 +252,9 @@ async function handleAction(action: string, body: Record<string, unknown>) {
     if (Object.keys(profileChanges).length) {
       const { error } = await service.from("profiles").update(profileChanges).eq("id", userId);
       if (error) throw error;
+    }
+    if (suspended !== undefined && suspended !== profile.suspended) {
+      await setUserSuspension(userId, profile, user, suspended);
     }
     const { profile: nextProfile, user: nextUser } = await getTargetUser(userId);
     return profileView(nextProfile, nextUser);
@@ -218,29 +264,7 @@ async function handleAction(action: string, body: Record<string, unknown>) {
     const { profile, user } = await getTargetUser(userId);
     const suspended = body.suspended;
     if (typeof suspended !== "boolean") throw new Error("A suspension status is required.");
-    if (suspended === profile.suspended) return profileView(profile, user);
-    if (suspended) {
-      const { error } = await service.from("profiles").update({ suspended: true }).eq("id", userId);
-      if (error) throw error;
-      const { error: authError } = await service.auth.admin.updateUserById(userId, {
-        ban_duration: "876000h",
-      });
-      if (authError) console.error("Profile suspension applied, but Auth ban failed:", authError.message);
-    } else {
-      const { error: authError } = await service.auth.admin.updateUserById(userId, {
-        ban_duration: "none",
-      });
-      if (authError) throw authError;
-      const { error } = await service.from("profiles").update({ suspended: false }).eq("id", userId);
-      if (error) {
-        const { error: rollbackError } = await service.auth.admin.updateUserById(userId, {
-          ban_duration: "876000h",
-        });
-        if (rollbackError) console.error("Failed to restore Auth ban after reactivation error:", rollbackError.message);
-        throw error;
-      }
-    }
-    return profileView({ ...profile, suspended }, user);
+    return setUserSuspension(userId, profile, user, suspended);
   }
 
   if (action === "delete-user") {
