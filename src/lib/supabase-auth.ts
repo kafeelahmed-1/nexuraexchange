@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
+import { toast } from "sonner";
+import { addLocalNotification } from "@/lib/local-features";
 import { supabase } from "@/lib/supabase";
 
 export interface DemoProfile {
@@ -14,6 +16,7 @@ export interface DemoProfile {
 
 export interface DemoAccountState {
   userId: string;
+  welcomeBonusGranted: boolean;
   portfolio: {
     totalBalance: number;
     availableBalance: number;
@@ -46,6 +49,7 @@ type ProfileRow = {
 };
 
 const accountStateChangedEvent = "nexora:demo-account-state-changed";
+const checkedBonusUsers = new Set<string>();
 
 export function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
@@ -81,6 +85,7 @@ async function getProfile(authUser: User) {
 export function createInitialAccountState(userId: string): DemoAccountState {
   return {
     userId,
+    welcomeBonusGranted: false,
     portfolio: { totalBalance: 0, availableBalance: 0, unrealizedPnL: 0, realizedPnL: 0 },
     assets: { USDT: 0, BTC: 0, ETH: 0, SOL: 0, BNB: 0, XRP: 0, DOGE: 0 },
     positions: {},
@@ -305,6 +310,29 @@ export function useDemoUser() {
           await supabase.auth.signOut({ scope: "local" });
           if (active) setUser(null);
           return;
+        }
+        if (profile.role === "user" && !checkedBonusUsers.has(profile.id)) {
+          checkedBonusUsers.add(profile.id);
+          try {
+            const { data, error } = await supabase.rpc("claim_welcome_bonus");
+            if (error) throw error;
+            if (data === true) {
+              const description = "$200 USDT has been added to your account.";
+              toast.success("You’ve been rewarded with a $200 welcome bonus!", { description });
+              addLocalNotification({
+                type: "system",
+                title: "$200 welcome bonus credited",
+                description,
+              });
+              window.dispatchEvent(new Event(accountStateChangedEvent));
+            }
+          } catch (error) {
+            toast.error(
+              error instanceof Error
+                ? `Unable to check your welcome bonus: ${error.message}`
+                : "Unable to check your welcome bonus. Please try again later.",
+            );
+          }
         }
         if (active) setUser(profile);
       } catch (error) {

@@ -471,7 +471,7 @@ const testimonials = [
 
 export function TestimonialsSection() {
   return (
-    <section className="border-y border-border bg-surface/70 py-20">
+    <section className="border-y border-[#e1e8e4] bg-[#f3f7f5] py-20 text-[#17231d]">
       <div className={wrap}>
         <SectionHead
           center
@@ -482,28 +482,28 @@ export function TestimonialsSection() {
         <div className="grid gap-4 md:grid-cols-3">
           {testimonials.map((testimonial, index) => (
             <Reveal key={testimonial.name} delay={index * 0.08} className="h-full">
-              <article className="flex h-full flex-col rounded-xl border border-border bg-card p-6 transition duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_18px_50px_-30px_var(--primary)]">
+              <article className="flex h-full flex-col rounded-xl border border-[#e1e8e4] bg-white p-6 transition duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_18px_50px_-30px_var(--primary)]">
                 <div className="flex items-center gap-1 text-primary" aria-label="5 out of 5 stars">
                   {Array.from({ length: 5 }).map((_, starIndex) => <Star key={starIndex} size={14} fill="currentColor" aria-hidden="true" />)}
                 </div>
                 <blockquote className="mt-5 flex-1 text-base font-medium leading-relaxed">“{testimonial.quote}”</blockquote>
-                <div className="mt-6 flex items-center gap-3 border-t border-border pt-4">
+                <div className="mt-6 flex items-center gap-3 border-t border-[#e8eeea] pt-4">
                   <div className="grid size-9 place-items-center rounded-full bg-primary/10 text-xs font-black text-primary" aria-hidden="true">
                     {testimonial.name.split(" ").map((part) => part[0]).join("")}
                   </div>
                   <div>
                     <div className="text-sm font-bold">{testimonial.name}</div>
-                    <div className="text-xs text-muted-foreground">{testimonial.role}</div>
+                    <div className="text-xs text-[#68776e]">{testimonial.role}</div>
                   </div>
                 </div>
               </article>
             </Reveal>
           ))}
         </div>
-        <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-border pt-8 text-center sm:flex-row sm:text-left">
+        <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-[#e1e8e4] pt-8 text-center sm:flex-row sm:text-left">
           <div>
             <h3 className="text-xl font-black">Make the next move with your own account.</h3>
-            <p className="mt-1 text-sm text-muted-foreground">Set up your workspace in a few seconds.</p>
+            <p className="mt-1 text-sm text-[#68776e]">Set up your workspace in a few seconds.</p>
           </div>
           <Link to="/register" className="inline-flex shrink-0 items-center gap-2 rounded-md bg-primary px-5 py-3 text-sm font-bold text-primary-foreground transition hover:brightness-110">
             Create your account <ArrowRight size={16} />
@@ -576,16 +576,24 @@ export function FAQAccordion() {
 
 export function CustomerServiceSection() {
   return (
-    <section className="border-y border-border bg-surface">
-      <div className={cn(wrap, "flex flex-col items-start justify-between gap-6 py-10 sm:flex-row sm:items-center md:py-12")}>
-        <div className="max-w-xl">
-          <div className="mb-2 text-xs font-bold tracking-[0.18em] text-primary">CUSTOMER SERVICE</div>
-          <h2 className="text-2xl font-black">Questions about your account or trades?</h2>
-          <p className="mt-2 text-sm text-muted-foreground">Reach our support team for help with your BR Trades account.</p>
+    <section className="relative overflow-hidden border-y border-white/10 bg-[#020d12]">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(13,148,136,0.22),_transparent_38%),radial-gradient(circle_at_bottom_right,_rgba(20,184,166,0.14),_transparent_32%)]" />
+      <div className={cn(wrap, "relative flex flex-col items-start justify-between gap-8 py-10 sm:flex-row sm:items-center md:py-14")}>
+        <div className="max-w-2xl">
+          <div className="mb-3 text-xs font-black uppercase tracking-[0.28em] text-[#5eead4]">Customer Service</div>
+          <h2 className="text-3xl font-black leading-tight tracking-[-0.04em] text-white md:text-4xl lg:text-[2.8rem]">
+            Questions about your account or trades?
+          </h2>
+          <p className="mt-4 max-w-xl text-base leading-7 text-slate-300">
+            Reach our support team for help with your BR Trades account, trading activity, or account access.
+          </p>
         </div>
-        <SupportEntryButton className="inline-flex shrink-0 items-center gap-2 rounded-md border border-primary/30 bg-primary/[0.08] px-5 py-3 text-sm font-bold text-primary transition hover:border-primary/60 hover:bg-primary/[0.14] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan">
-          <Headset size={17} aria-hidden="true" />
-          Contact Support
+
+        <SupportEntryButton className="group inline-flex shrink-0 items-center gap-3 rounded-xl border border-[#34d399]/70 bg-[#071914]/80 px-5 py-3.5 text-base font-semibold text-white shadow-[0_0_0_1px_rgba(52,211,153,0.18),0_12px_30px_-12px_rgba(16,185,129,0.65)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#5eead4] hover:bg-[#0a221d] hover:shadow-[0_0_0_1px_rgba(94,234,212,0.3),0_18px_42px_-14px_rgba(16,185,129,0.9)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5eead4] focus-visible:ring-offset-2 focus-visible:ring-offset-[#020d12]">
+          <span className="flex h-8 w-8 items-center justify-center rounded-md border border-[#5eead4]/50 bg-[#0d1d1a] text-[#5eead4] transition-colors group-hover:bg-[#0d2c27] group-hover:text-white">
+            <Headset size={17} aria-hidden="true" />
+          </span>
+          <span>Contact Support</span>
         </SupportEntryButton>
       </div>
     </section>

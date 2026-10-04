@@ -278,6 +278,23 @@ function AccountOverview() {
         </div>
       </header>
 
+      {accountState.welcomeBonusGranted && (
+        <section
+          aria-label="Welcome bonus"
+          className="mb-4 flex flex-col gap-1 rounded-xl border border-primary/25 bg-primary/[0.06] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5"
+        >
+          <div>
+            <h2 className="text-sm font-bold text-primary">
+              Your $200 welcome bonus has been credited
+            </h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              $200 USDT was added to your available balance.
+            </p>
+          </div>
+          <span className="num text-lg font-bold text-primary">+$200.00</span>
+        </section>
+      )}
+
       <section
         aria-label="Total assets and profit and loss"
         id="overview"

@@ -59,7 +59,7 @@ Check the production build with `npm run build`.
    );
    ```
 
-6. Registration and login use `supabase.auth.signUp({ email, password })` and `supabase.auth.signInWithPassword({ email, password })` in `src/lib/supabase-auth.ts`. Never save passwords or password hashes in `profiles` or `account_data`; Supabase Auth stores and verifies credentials. A user's simulated dashboard state is saved to `account_data` with their authenticated user ID. RLS ensures a normal user can only read or change their own row. Existing browser-local demo accounts are not automatically migrated.
+6. Registration and login use `supabase.auth.signUp({ email, password })` and `supabase.auth.signInWithPassword({ email, password })` in `src/lib/supabase-auth.ts`. Never save passwords or password hashes in `profiles` or `account_data`; Supabase Auth stores and verifies credentials. A user's simulated dashboard state is saved to `account_data` with their authenticated user ID. RLS ensures a normal user can only read or change their own row. Existing browser-local demo accounts are not automatically migrated. Apply the Supabase migrations, including `20261004000000_welcome_bonus.sql` and `20261004010000_repair_welcome_bonus_first_login.sql`, to enable and repair the one-time $200 USDT first-login bonus.
 7. Move admin actions to a Supabase Edge Function or trusted server endpoint. It must verify the caller's access token and confirm their `profiles.role` is `admin` before listing users, viewing their data, changing account status, or deleting accounts. Use the service-role key only in that server-side environment. Set an admin's role through a trusted operator/server process, never from a client request.
 
 ## Admin and data safety
